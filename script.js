@@ -1554,7 +1554,41 @@ async function initApp() {
   render();
   fetchCDI();
 
-  await window.Clerk.load();
+  await window.Clerk.load({
+    localization: {
+      locale: "pt-BR",
+      signIn: {
+        start: {
+          title: "Entrar",
+          subtitle: "para continuar no FinanceOS",
+          actionText: "Não tem uma conta?",
+          actionLink: "Criar conta",
+        },
+        password: {
+          title: "Digite sua senha",
+          actionLink: "Esqueci a senha",
+        },
+      },
+      signUp: {
+        start: {
+          title: "Criar conta",
+          subtitle: "para começar a usar o FinanceOS",
+          actionText: "Já tem uma conta?",
+          actionLink: "Entrar",
+        },
+      },
+      userButton: {
+        action__signOut: "Sair",
+        action__manageAccount: "Gerenciar conta",
+      },
+      formFieldLabel__emailAddress: "E-mail",
+      formFieldLabel__password: "Senha",
+      formButtonPrimary: "Continuar",
+      dividerText: "ou",
+      socialButtonsBlockButton: "Continuar com {{provider|titleize}}",
+      footerActionLink__useAnotherMethod: "Usar outro método",
+    },
+  });
   const user = window.Clerk.user;
 
   if (!user) {
