@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinanceOS</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  </head>
+
+  <body>
+    <header class="header">
+      <div class="logo">
+        <div class="logo-mark">F</div>
+        Finance<span>OS</span>
+      </div>
+      <div class="month-nav">
+        <button class="mnav-btn" onclick="prevMonth()">&#8249;</button>
+        <div class="mnav-label" id="monthLabel">—</div>
+        <button class="mnav-btn" onclick="nextMonth()">&#8250;</button>
+      </div>
+      <div class="header-right">
+        <button class="btn-sm" onclick="copyPrevMonthFixed()">
+          <i class="fa-solid fa-copy"></i> Copiar fixas
+        </button>
+        <button class="btn-sm" onclick="copyPrevMonthRenda()">
+          <i class="fa-solid fa-copy"></i> Copiar renda
+        </button>
+        <button class="btn-sm" onclick="toggleHistPanel()"><i class="fa-solid fa-chart-bar"></i> Histórico</button>
+        <div class="util-menu-wrap">
+          <button class="util-menu-btn" onclick="toggleUtilMenu(event)">
+            <i class="fa-solid fa-ellipsis-vertical"></i> Mais
+          </button>
+          <div class="util-menu-dropdown" id="utilMenu">
+            <button class="util-menu-item" onclick="exportData(); closeUtilMenu();">
+              <i class="fa-solid fa-download"></i> Exportar JSON
+            </button>
+            <button class="util-menu-item" onclick="exportCSV(); closeUtilMenu();">
+              <i class="fa-solid fa-file-csv"></i> Exportar CSV
+            </button>
+            <button class="util-menu-item" onclick="importClick(); closeUtilMenu();">
+              <i class="fa-solid fa-upload"></i> Importar JSON
+            </button>
+            <div class="util-sep"></div>
+            <button class="util-menu-item danger" onclick="clearAll(); closeUtilMenu();">
+              <i class="fa-solid fa-trash"></i> Limpar tudo
+            </button>
+          </div>
+        </div>
+        <input
+          type="file"
+          id="importFile"
+          accept=".json"
+          style="display: none"
+          onchange="importData(event)"
+        />
+      </div>
+    </header>
+
+    <div class="main">
+      <div id="todayBanner" style="display: none; margin-bottom: 16px"></div>
+      <div class="hist-panel" id="histPanel">
+        <div class="hist-head">
+          <div class="hist-title">📊 Histórico — Últimos 12 meses</div>
+          <button class="btn-sm" onclick="toggleHistPanel()"><i class="fa-solid fa-xmark"></i> Fechar</button>
+        </div>
+        <div class="hist-body" id="histBody"></div>
+      </div>
+      <div class="summary" id="summary"></div>
+      <div class="progress-row" id="progressRow"></div>
+
+      <div class="layout-main">
+        <!-- DESPESAS -->
+        <div class="section col-left">
+          <div class="sec-head">
+            <div class="sec-head-row">
+              <div class="sec-title-wrap">
+                <div class="sec-icon icon-r">💸</div>
+                <div>
+                  <div class="sec-title">Despesas</div>
+                  <div class="sec-sub" id="despSub">—</div>
+                  <div class="sec-sub2" id="despBreak"></div>
+                </div>
+              </div>
+              <button class="btn-add" onclick="openModal('despesa')">
+                <i class="fa-solid fa-plus"></i> Adicionar
+              </button>
+            </div>
+            <div class="ftabs">
+              <button class="ftab active" onclick="setFilter('todos', this)">
+                Todos
+              </button>
+              <button class="ftab" onclick="setFilter('fixo', this)">
+                Fixas
+              </button>
+              <button class="ftab" onclick="setFilter('esporadico', this)">
+                Esporádicas
+              </button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="desp-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Valor</th>
+                  <th
+                    class="sortable"
+                    onclick="toggleSort('d')"
+                    id="despDiaHead"
+                  >
+                    Dia ↑
+                  </th>
+                  <th class="right"></th>
+                </tr>
+              </thead>
+              <tbody id="despBody"></tbody>
+            </table>
+            <div class="empty" id="despEmpty" style="display: none">
+              <div class="empty-icon">📋</div>
+              <div>Nenhuma despesa</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RENDA -->
+        <div class="section col-right-top">
+          <div class="sec-head">
+            <div class="sec-head-row">
+              <div class="sec-title-wrap">
+                <div class="sec-icon icon-g">💰</div>
+                <div>
+                  <div class="sec-title">Renda</div>
+                  <div class="sec-sub" id="rendSub">—</div>
+                </div>
+              </div>
+              <button class="btn-add" onclick="openModal('renda')">
+                <i class="fa-solid fa-plus"></i> Adicionar
+              </button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="rend-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Valor</th>
+                  <th
+                    class="sortable"
+                    onclick="toggleSort('r')"
+                    id="rendDiaHead"
+                  >
+                    Dia ↑
+                  </th>
+                  <th class="right"></th>
+                </tr>
+              </thead>
+              <tbody id="rendBody"></tbody>
+            </table>
+            <div class="empty" id="rendEmpty" style="display: none">
+              <div class="empty-icon">💵</div>
+              <div>Nenhuma renda</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INVESTIMENTOS -->
+        <div class="section col-right-bottom">
+          <div class="sec-head">
+            <div class="sec-head-row">
+              <div class="sec-title-wrap">
+                <div class="sec-icon icon-y">📈</div>
+                <div>
+                  <div class="sec-title">Investimentos</div>
+                  <div class="sec-sub" id="invSub">—</div>
+                </div>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  flex-wrap: wrap;
+                "
+              >
+                <div class="cdi-badge">
+                  <div class="cdi-dot" id="cdiDot"></div>
+                  <span id="cdiLabel">CDI...</span>
+                </div>
+                <button class="btn-add" onclick="openModal('investimento')">
+                  <i class="fa-solid fa-plus"></i> Adicionar
+                </button>
+              </div>
+            </div>
+          </div>
+          <div id="invGrid" class="inv-grid"></div>
+          <div class="empty" id="invEmpty" style="display: none">
+            <div class="empty-icon">📊</div>
+            <div>Nenhum investimento cadastrado</div>
+          </div>
+          <div id="invTotal" style="display: none" class="inv-total">
+            <span class="inv-total-label">Total em carteira</span>
+            <span class="inv-total-val" id="invTotalVal">R$ 0,00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+      <div class="modal">
+        <div class="modal-title" id="modalTitle">—</div>
+        <div id="modalBody"></div>
+        <div class="modal-actions">
+          <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+          <button class="btn-save" onclick="saveModal()">Salvar</button>
+        </div>
+      </div>
+    </div>
+    <div class="toast" id="toast">
+      <span id="toastMsg"></span>
+      <button
+        class="toast-undo"
+        id="toastUndo"
+        style="display: none"
+        onclick="undoLast()"
+      >
+        Desfazer
+      </button>
+    </div>
+
+    <!-- Clerk -->
+    <script
+      async
+      crossorigin="anonymous"
+      data-clerk-publishable-key="pk_test_Y3V0ZS1mb2FsLTg2LmNsZXJrLmFjY291bnRzLmRldiQ"
+      src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+      type="text/javascript"
+    ></script>
+
+    <script src="script.js"></script>
+  </body>
+
+</html>
