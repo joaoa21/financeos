@@ -215,26 +215,34 @@ function businessDays(s, e) {
   return n;
 }
 
-// CDB: only count aportes where previsto !== true
+// CDB: only count aportes where previsto !== true + valorBase (carryover)
 function calcCDB(inv) {
-  if (!inv.aportes || !inv.aportes.length) return null;
-  const active = inv.aportes.filter((a) => !a.previsto);
-  if (!active.length) return null;
+  const active = (inv.aportes || []).filter((a) => !a.previsto);
+  const hasBase = inv.valorBase && inv.valorBase.valor > 0;
+  if (!active.length && !hasBase) return null;
   const rate = cdiDiary ?? Math.pow(1 + 13.75 / 100, 1 / 252) - 1;
   const myRate = rate * ((inv.percentualCDI || 100) / 100);
   const today = new Date().toISOString().slice(0, 10);
-  let valorAtual = 0,
-    valorTotal = 0;
+  let valorAtual = 0, valorTotal = 0;
+
+  // valorBase (carryover consolidado)
+  if (hasBase) {
+    const days = businessDays(inv.valorBase.data, today);
+    valorAtual += days > 0 ? inv.valorBase.valor * Math.pow(1 + myRate, days) : inv.valorBase.valor;
+    valorTotal += inv.valorBase.valor;
+  }
+
+  // aportes individuais
   active.forEach((a) => {
     const days = businessDays(a.data, today);
     valorAtual += days > 0 ? a.valor * Math.pow(1 + myRate, days) : a.valor;
     valorTotal += a.valor;
   });
+
   return {
     valorAtual,
     rendimento: valorAtual - valorTotal,
-    rendPct:
-      valorTotal > 0 ? ((valorAtual - valorTotal) / valorTotal) * 100 : 0,
+    rendPct: valorTotal > 0 ? ((valorAtual - valorTotal) / valorTotal) * 100 : 0,
     valorTotal,
   };
 }
@@ -438,7 +446,7 @@ function render() {
 
   let tInvCarteira = 0;
   data.investimentos.forEach((i) => {
-    if (i.tipo === "CDB" && i.aportes && i.aportes.length) {
+    if (i.tipo === "CDB" && (i.aportes?.length || i.valorBase)) {
       const c = calcCDB(i);
       tInvCarteira += c ? c.valorAtual : 0;
     } else
@@ -637,7 +645,7 @@ function render() {
     </div>`;
         };
 
-        if (i.tipo === "CDB" && i.aportes && i.aportes.length) {
+        if (i.tipo === "CDB" && (i.aportes?.length || i.valorBase)) {
           const c = calcCDB(i);
           const va = c ? c.valorAtual : 0,
             rd = c ? c.rendimento : 0,
@@ -657,8 +665,12 @@ function render() {
     <div class="inv-type">CDB · ${i.percentualCDI || 100}% CDI</div>
     <div class="inv-val">${brl(va)}</div>
     <div class="inv-rend ${rd < 0 ? "neg" : ""}">${sg}${brl(rd)} (${sg}${rp.toFixed(3)}%)</div>
-    <div class="inv-meta"><span>Confirmado: ${brl(vt)}</span><span>${i.aportes.length} aporte(s)</span></div>
-    ${i.aportes.length ? `<div class="inv-aportes">${aporteRows}</div>` : ""}
+    <div class="inv-meta">
+      <span>Confirmado: ${brl(vt)}</span>
+      <span>${i.valorBase ? "Base + " : ""}${i.aportes.length} aporte(s)</span>
+    </div>
+    ${i.valorBase ? `<div class="inv-aportes"><div class="inv-aporte-row" style="opacity:0.5;font-style:italic"><span>Base (carry)</span><span class="inv-aporte-val">${brl(i.valorBase.valor)}</span></div></div>` : ""}
+    ${aporteRows ? `<div class="inv-aportes">${aporteRows}</div>` : ""}
     <div style="margin-top:8px"><button class="btn-ghost" style="width:100%;justify-content:center" onclick="carryInvest('${i.id}')"><i class="fa-solid fa-arrow-right"></i> Próximo mês</button></div>
   </div>`;
         }
@@ -916,12 +928,37 @@ function carryInvest(invId) {
     toast("Investimento já existe no próximo mês", "warn");
     return;
   }
-  next.investimentos.push({
-    ...JSON.parse(JSON.stringify(inv)),
+
+  // Calcula o valor total atual (consolidado)
+  const primeiroDoMes = `${nyr}-${String(nmo + 1).padStart(2, "0")}-01`;
+  let valorConsolidado = 0;
+
+  if (inv.tipo === "CDB") {
+    const c = calcCDB(inv);
+    valorConsolidado = c ? c.valorAtual : 0;
+  } else {
+    valorConsolidado = (inv.valor || 0) +
+      (inv.aportes || []).filter(a => !a.previsto).reduce((s, a) => s + a.valor, 0);
+  }
+
+  // Copia o investimento com valor consolidado (sem histórico de aportes)
+  const invCopy = {
     id: uid(),
-  });
+    nome: inv.nome,
+    tipo: inv.tipo,
+    percentualCDI: inv.percentualCDI,
+    // CDB: valorBase entra no CDI mas não aparece como aporte na lista
+    valorBase: inv.tipo === "CDB" ? { valor: valorConsolidado, data: primeiroDoMes } : undefined,
+    valor: inv.tipo !== "CDB" ? valorConsolidado : undefined,
+    aportes: [],
+  };
+
+  if (invCopy.valorBase === undefined) delete invCopy.valorBase;
+  if (invCopy.valor === undefined) delete invCopy.valor;
+
+  next.investimentos.push(invCopy);
   save();
-  toast(`"${inv.nome}" copiado para ${MONTHS[nmo]}/${nyr}`, "ok");
+  toast(`"${inv.nome}" copiado para ${MONTHS[nmo]}/${nyr} — consolidado em ${brl(valorConsolidado)}`, "ok");
 }
 
 // ─── APORTE MODAL ───────────────────────────────────────
@@ -1306,6 +1343,92 @@ function copyPrevMonthRenda() {
   toast(`${added} rendas copiadas!`, "ok");
 }
 
+// ─── FECHAR MÊS ─────────────────────────────────────────
+function closeMonth() {
+  const data = getMonth();
+  const nmo = mo === 11 ? 0 : mo + 1;
+  const nyr = mo === 11 ? yr + 1 : yr;
+
+  // Calcula Na Conta atual
+  const tDR = data.despesas.reduce((s, d) => s + d.realizado, 0);
+  const tRR = data.rendas.reduce((s, r) => s + r.realizado, 0);
+  const tAgendado = data.despesas.filter(d => d.agendado && d.realizado === 0).reduce((s, d) => s + d.planejado, 0);
+  const invImp = calcInvImpact(data);
+  const naConta = data.saldoInicial + tRR - tDR - tAgendado - invImp.realizado;
+
+  const fixasRec = data.despesas.filter(d => d.tipo === "fixo" && d.autoReplicar).length;
+  const nInv = data.investimentos.length;
+
+  modalCtx = { type: "__fechar_mes__", nmo, nyr, naConta };
+  document.getElementById("modalTitle").textContent = `🔒 Fechar ${MONTHS[mo]} ${yr}`;
+  document.getElementById("modalBody").innerHTML = `
+    <div class="modal-info" style="margin-bottom:14px">
+      O próximo mês (<strong>${MONTHS[nmo]} ${nyr}</strong>) será preparado automaticamente:
+    </div>
+    <p class="confirm-msg">
+      💰 <strong>Saldo inicial:</strong> ${brl(naConta)} (Na Conta agora)<br><br>
+      📋 <strong>${fixasRec} despesa(s) fixa(s)</strong> recorrentes — copiadas sem agendamento<br><br>
+      📈 <strong>${nInv} investimento(s)</strong> — consolidados com valor atual
+    </p>
+    <p class="confirm-warn" style="margin-top:8px">Dados já existentes em ${MONTHS[nmo]} serão preservados.</p>`;
+  document.querySelector(".modal-actions").innerHTML = `
+    <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+    <button class="btn-save" style="background:var(--green)" onclick="doCloseMonth()"><i class="fa-solid fa-lock"></i> Fechar mês</button>`;
+  document.getElementById("overlay").classList.add("open");
+}
+
+function doCloseMonth() {
+  if (!modalCtx || modalCtx.type !== "__fechar_mes__") return;
+  const { nmo, nyr, naConta } = modalCtx;
+  const data = getMonth();
+  const next = getMonth(nyr, nmo);
+  const primeiroDoMes = `${nyr}-${String(nmo + 1).padStart(2, "0")}-01`;
+
+  // 1. Saldo inicial = Na Conta atual
+  next.saldoInicial = naConta;
+
+  // 2. Despesas fixas recorrentes (sem agendado, sem realizado)
+  const existingDesp = new Set(next.despesas.map(d => d.nome.toLowerCase()));
+  data.despesas
+    .filter(d => d.tipo === "fixo" && d.autoReplicar)
+    .forEach(d => {
+      if (!existingDesp.has(d.nome.toLowerCase())) {
+        next.despesas.push({ ...d, id: uid(), realizado: 0, agendado: false });
+      }
+    });
+
+  // 3. Investimentos consolidados
+  data.investimentos.forEach(inv => {
+    if (next.investimentos.find(i => i.nome === inv.nome && i.tipo === inv.tipo)) return;
+
+    let valorConsolidado = 0;
+    if (inv.tipo === "CDB") {
+      const c = calcCDB(inv);
+      valorConsolidado = c ? c.valorAtual : 0;
+    } else {
+      valorConsolidado = (inv.valor || 0) +
+        (inv.aportes || []).filter(a => !a.previsto).reduce((s, a) => s + a.valor, 0);
+    }
+
+    const invCopy = {
+      id: uid(),
+      nome: inv.nome,
+      tipo: inv.tipo,
+      percentualCDI: inv.percentualCDI,
+      valorBase: inv.tipo === "CDB" ? { valor: valorConsolidado, data: primeiroDoMes } : undefined,
+      valor: inv.tipo !== "CDB" ? valorConsolidado : undefined,
+      aportes: [],
+    };
+    if (invCopy.valorBase === undefined) delete invCopy.valorBase;
+    if (invCopy.valor === undefined) delete invCopy.valor;
+    next.investimentos.push(invCopy);
+  });
+
+  save();
+  closeModal();
+  toast(`${MONTHS[mo]} fechado! ${MONTHS[nmo]}/${nyr} preparado com saldo ${brl(naConta)} 🎉`, "ok");
+}
+
 // ─── CLEAR ALL ──────────────────────────────────────────
 function clearMonth() {
   modalCtx = { type: "__confirm_clear_month__" };
@@ -1392,7 +1515,7 @@ function exportCSV() {
     ]),
   );
   data.investimentos.forEach((i) => {
-    if (i.tipo === "CDB" && i.aportes && i.aportes.length) {
+    if (i.tipo === "CDB" && (i.aportes?.length || i.valorBase)) {
       const cv = calcCDB(i);
       rows.push([
         "Investimento",
