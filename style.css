@@ -604,7 +604,7 @@ tbody td.right {
 
 /* Color stripe — tipo (overridden by done) */
 tr.tr-boleto:not(.tr-done) td:first-child {
-  box-shadow: inset 3px 0 0 var(--text2);
+  box-shadow: inset 3px 0 0 #0ea5e9; /* sky blue — distinto do azul de agendado */
 }
 tr.tr-cartao:not(.tr-done) td:first-child {
   box-shadow: inset 3px 0 0 var(--purple);
@@ -1367,16 +1367,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin-left: 5px;
   vertical-align: middle;
 }
-/* AGENDADO */
+/* AGENDADO — mantém cor do tipo na lateral, só altera o fundo */
 tbody tr.tr-agendado {
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(59, 130, 246, 0.06);
 }
 tbody tr.tr-agendado:hover {
-  background: rgba(59, 130, 246, 0.09);
+  background: rgba(59, 130, 246, 0.11);
 }
-tbody tr.tr-agendado td:first-child {
-  box-shadow: inset 3px 0 0 var(--blue);
-}
+/* stripe: a cor do tipo (tr-boleto, tr-cartao, tr-espora) prevalece via especificidade */
 .badge-agendado {
   background: rgba(59, 130, 246, 0.15);
   color: var(--blue);

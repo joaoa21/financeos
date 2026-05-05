@@ -247,7 +247,8 @@ function calcInvImpact(data) {
     (i.aportes || []).forEach((a) => {
       if (a.impacto === "planejado" || a.impacto === "realizado")
         planejado += a.valor;
-      if (a.impacto === "realizado") realizado += a.valor;
+      // "realizado" = abate sobra + conta | "confirmado" = só conta (veio de previsto)
+      if (a.impacto === "realizado" || a.impacto === "confirmado") realizado += a.valor;
     });
     if (!i.aportes || i.aportes.length === 0) {
       if (i.impacto === "planejado" || i.impacto === "realizado")
@@ -430,7 +431,8 @@ function render() {
   // Sobra = saldoInicial + renda - despesas - investimentos planejados
   const sobra = data.saldoInicial + tRP - tDP - inv.planejado;
   const base = data.saldoInicial + tRP;
-  const econ = base > 0 ? (sobra / base) * 100 : 0;
+  // % economia = quanto da renda não foi gasto (investimento = poupança, não gasto)
+  const econ = tRP > 0 ? ((tRP - tDP) / tRP) * 100 : 0;
   // Na conta = saldoInicial + recebido - pago - agendado - investimentos realizados
   const naConta = data.saldoInicial + tRR - tDR - tAgendado - inv.realizado;
 
@@ -509,7 +511,7 @@ function render() {
 <span class="sub2-tag"><span class="sub2-dot" style="background:#fbbf24"></span>Esporádico ${brl(tEspora)}</span>
 </div>
 <div class="sub2-row">
-<span class="sub2-tag"><span class="sub2-dot" style="background:#60a5fa"></span>Boleto ${brl(tBoleto)}</span>
+<span class="sub2-tag"><span class="sub2-dot" style="background:#0ea5e9"></span>Boleto ${brl(tBoleto)}</span>
 <span class="sub2-tag"><span class="sub2-dot" style="background:#a78bfa"></span>Cartão ${brl(tCartao)}</span>
 </div>`;
 
@@ -544,14 +546,9 @@ function render() {
         const done = d.realizado > 0;
         const agendado = d.agendado && !done;
         const hoje = d.data === todayDay && isCurrentMonth;
-        let tc =
-          d.tipo === "esporadico"
-            ? "tr-espora"
-            : d.subtipo === "cartao"
-              ? "tr-cartao"
-              : "tr-boleto";
+        let tc = d.tipo === "esporadico" ? "tr-espora" : d.subtipo === "cartao" ? "tr-cartao" : "tr-boleto";
         if (done) tc = "tr-done";
-        else if (agendado) tc = "tr-agendado";
+        else if (agendado) tc += " tr-agendado"; // mantém cor do tipo + agendado por cima
         const badge = done
           ? '<span class="badge-inline">Pago</span>'
           : agendado
@@ -647,7 +644,9 @@ function render() {
             rp = c ? c.rendPct : 0,
             vt = c ? c.valorTotal : 0;
           const sg = rd >= 0 ? "+" : "";
-          const aporteRows = i.aportes.map((a) => aporteFmt(a, i.id)).join("");
+          const aporteRows = [...i.aportes]
+            .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
+            .map((a) => aporteFmt(a, i.id)).join("");
           return `<div class="inv-card cdb-card">
     <div class="inv-card-acts">
       <button class="btn-ghost" onclick="openAporte('${i.id}')"><i class="fa-solid fa-plus"></i> Aporte</button>
@@ -669,7 +668,8 @@ function render() {
           (i.aportes || [])
             .filter((a) => !a.previsto)
             .reduce((s, a) => s + a.valor, 0);
-        const aporteRows = (i.aportes || [])
+        const aporteRows = [...(i.aportes || [])]
+          .sort((a, b) => (a.data || "").localeCompare(b.data || ""))
           .map((a) => aporteFmt(a, i.id))
           .join("");
         return `<div class="inv-card">
@@ -798,6 +798,19 @@ function toggleAportePrevisto(invId, aporteId) {
   const a = inv.aportes.find((a) => a.id === aporteId);
   if (!a) return;
   a.previsto = !a.previsto;
+
+  if (!a.previsto) {
+    // Confirmando: guarda impacto original e escala para o próximo nível
+    a.impactoOriginal = a.impacto;
+    if (a.impacto === "nenhum") a.impacto = "confirmado";    // só Na Conta
+    else if (a.impacto === "planejado") a.impacto = "realizado"; // Sobra + Na Conta
+    // se já era "realizado" ou "confirmado", mantém
+  } else {
+    // Voltando para previsto: restaura impacto original
+    a.impacto = a.impactoOriginal ?? "nenhum";
+    delete a.impactoOriginal;
+  }
+
   save();
   render();
   toast(
@@ -1294,6 +1307,24 @@ function copyPrevMonthRenda() {
 }
 
 // ─── CLEAR ALL ──────────────────────────────────────────
+function clearMonth() {
+  modalCtx = { type: "__confirm_clear_month__" };
+  document.getElementById("modalTitle").textContent = "🗑 Limpar mês atual";
+  document.getElementById("modalBody").innerHTML =
+    `<p class="confirm-msg">Apaga todas as despesas, rendas e investimentos de <strong>${MONTHS[mo]} ${yr}</strong>. O saldo inicial será zerado também.</p><p class="confirm-warn">⚠ Esta ação não pode ser desfeita.</p>`;
+  document.querySelector(".modal-actions").innerHTML =
+    `<button class="btn-cancel" onclick="closeModal()">Cancelar</button><button class="btn-confirm-del" onclick="doConfirmClearMonth()">Sim, limpar mês</button>`;
+  document.getElementById("overlay").classList.add("open");
+}
+function doConfirmClearMonth() {
+  const k = getKey();
+  delete state[k];
+  save();
+  closeModal();
+  render();
+  toast(`${MONTHS[mo]} ${yr} foi limpo`, "ok");
+}
+
 function clearAll() {
   modalCtx = { type: "__confirm_clear__" };
   document.getElementById("modalTitle").textContent = "⚠ Limpar todos os dados";
