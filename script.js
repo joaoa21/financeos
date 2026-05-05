@@ -93,7 +93,10 @@ async function loadFromAPI() {
     const res = await fetch(`${API_URL}/api/state`, {
       headers: { "Authorization": `Bearer ${clerkToken}` },
     });
-    if (!res.ok) return false;
+    if (!res.ok) {
+      console.error("API load falhou:", res.status, await res.text());
+      return false;
+    }
     const { data } = await res.json();
     if (data && Object.keys(data).length > 0) {
       state = data;
@@ -102,7 +105,7 @@ async function loadFromAPI() {
     }
     return false;
   } catch (err) {
-    console.warn("Erro ao buscar dados da API:", err.message);
+    console.error("Erro ao buscar dados da API:", err.message);
     return false;
   }
 }
@@ -1754,6 +1757,7 @@ async function initApp() {
   authReady = true;
   renderAuthUI(user);
 
+  toast("Carregando seus dados...", "ok");
   const loaded = await loadFromAPI();
   if (loaded) {
     const local = localStorage.getItem("fos_v3");
@@ -1768,9 +1772,13 @@ async function initApp() {
       }
     }
     render();
+    toast("Dados carregados ✓", "ok");
   } else if (Object.keys(state).length > 0) {
     toast("Migrando dados locais para a nuvem...", "ok");
     await syncToAPI();
+    toast("Dados sincronizados ✓", "ok");
+  } else {
+    toast("Nenhum dado encontrado no servidor", "warn");
   }
 
   setInterval(async () => {
