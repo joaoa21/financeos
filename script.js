@@ -1691,9 +1691,7 @@ function renderAuthUI(user) {
 function showLoginScreen() {
   document.body.innerHTML = `
     <div style="min-height:100vh;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
-      <div style="font-family:'Outfit',sans-serif;font-size:28px;font-weight:800;color:var(--text)">
-        Finance<span style="color:var(--orange)">OS</span>
-      </div>
+      <img src="/assets/logo.svg" alt="FinanceOS" style="height:48px;width:auto">
       <div id="clerk-sign-in"></div>
     </div>`;
   window.Clerk.mountSignIn(document.getElementById("clerk-sign-in"));
@@ -1707,37 +1705,34 @@ async function signOut() {
 
 // ─── INIT ───────────────────────────────────────────────
 async function initApp() {
-  load();
-  render();
-  fetchCDI();
+  // Oculta o app e mostra spinner enquanto Clerk verifica sessão
+  const header = document.querySelector('.header');
+  const main = document.querySelector('.main');
+  const overlay = document.getElementById('overlay');
+  const toast = document.getElementById('toast');
+  [header, main, overlay, toast].forEach(el => { if (el) el.style.display = 'none'; });
+
+  const spinner = document.createElement('div');
+  spinner.id = 'appLoading';
+  spinner.innerHTML = `
+    <div style="min-height:100vh;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;">
+      <img src="/assets/logo.svg" alt="FinanceOS" style="height:48px;width:auto">
+      <div style="width:28px;height:28px;border:3px solid var(--border2);border-top-color:var(--orange);border-radius:50%;animation:spin 0.8s linear infinite"></div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    </div>`;
+  document.body.appendChild(spinner);
 
   await window.Clerk.load({
     localization: {
       locale: "pt-BR",
       signIn: {
-        start: {
-          title: "Entrar",
-          subtitle: "para continuar no FinanceOS",
-          actionText: "Não tem uma conta?",
-          actionLink: "Criar conta",
-        },
-        password: {
-          title: "Digite sua senha",
-          actionLink: "Esqueci a senha",
-        },
+        start: { title: "Entrar", subtitle: "para continuar no FinanceOS", actionText: "Não tem uma conta?", actionLink: "Criar conta" },
+        password: { title: "Digite sua senha", actionLink: "Esqueci a senha" },
       },
       signUp: {
-        start: {
-          title: "Criar conta",
-          subtitle: "para começar a usar o FinanceOS",
-          actionText: "Já tem uma conta?",
-          actionLink: "Entrar",
-        },
+        start: { title: "Criar conta", subtitle: "para começar a usar o FinanceOS", actionText: "Já tem uma conta?", actionLink: "Entrar" },
       },
-      userButton: {
-        action__signOut: "Sair",
-        action__manageAccount: "Gerenciar conta",
-      },
+      userButton: { action__signOut: "Sair", action__manageAccount: "Gerenciar conta" },
       formFieldLabel__emailAddress: "E-mail",
       formFieldLabel__password: "Senha",
       formButtonPrimary: "Continuar",
@@ -1746,12 +1741,21 @@ async function initApp() {
       footerActionLink__useAnotherMethod: "Usar outro método",
     },
   });
+
+  spinner.remove();
   const user = window.Clerk.user;
 
   if (!user) {
     showLoginScreen();
     return;
   }
+
+  // Usuário confirmado — revela o app
+  [header, main, overlay, toast].forEach(el => { if (el) el.style.display = ''; });
+
+  load();
+  render();
+  fetchCDI();
 
   clerkToken = await window.Clerk.session.getToken();
   authReady = true;
