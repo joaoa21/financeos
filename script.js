@@ -1708,9 +1708,9 @@ async function initApp() {
   // Oculta o app e mostra spinner enquanto Clerk verifica sessão
   const header = document.querySelector('.header');
   const main = document.querySelector('.main');
-  const overlay = document.getElementById('overlay');
-  const toast = document.getElementById('toast');
-  [header, main, overlay, toast].forEach(el => { if (el) el.style.display = 'none'; });
+  const overlayEl = document.getElementById('overlay');
+  const toastEl = document.getElementById('toast');
+  [header, main, overlayEl, toastEl].forEach(el => { if (el) el.style.display = 'none'; });
 
   const spinner = document.createElement('div');
   spinner.id = 'appLoading';
@@ -1751,7 +1751,7 @@ async function initApp() {
   }
 
   // Usuário confirmado — revela o app
-  [header, main, overlay, toast].forEach(el => { if (el) el.style.display = ''; });
+  [header, main, overlayEl, toastEl].forEach(el => { if (el) el.style.display = ''; });
 
   load();
   render();
