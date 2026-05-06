@@ -18,7 +18,7 @@
   </head>
 
   <body>
-    <header class="header">
+    <header class="header" style="display:none">
       <div class="logo">
         <a href="/">
           <img src="/assets/logo.svg" alt="">
@@ -73,7 +73,7 @@
       </div>
     </header>
 
-    <div class="main">
+    <div class="main" style="display:none">
       <div id="todayBanner" style="display: none; margin-bottom: 16px"></div>
       <div class="hist-panel" id="histPanel">
         <div class="hist-head">
@@ -103,15 +103,9 @@
               </button>
             </div>
             <div class="ftabs">
-              <button class="ftab active" onclick="setFilter('todos', this)">
-                Todos
-              </button>
-              <button class="ftab" onclick="setFilter('fixo', this)">
-                Fixas
-              </button>
-              <button class="ftab" onclick="setFilter('esporadico', this)">
-                Esporádicas
-              </button>
+              <button class="ftab active" onclick="setFilter('todos', this)">Todos</button>
+              <button class="ftab" onclick="setFilter('fixo', this)">Fixas</button>
+              <button class="ftab" onclick="setFilter('esporadico', this)">Esporádicas</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -120,13 +114,7 @@
                 <tr>
                   <th>Nome</th>
                   <th>Valor</th>
-                  <th
-                    class="sortable"
-                    onclick="toggleSort('d')"
-                    id="despDiaHead"
-                  >
-                    Dia ↑
-                  </th>
+                  <th class="sortable" onclick="toggleSort('d')" id="despDiaHead">Dia ↑</th>
                   <th class="right"></th>
                 </tr>
               </thead>
@@ -161,13 +149,7 @@
                 <tr>
                   <th>Nome</th>
                   <th>Valor</th>
-                  <th
-                    class="sortable"
-                    onclick="toggleSort('r')"
-                    id="rendDiaHead"
-                  >
-                    Dia ↑
-                  </th>
+                  <th class="sortable" onclick="toggleSort('r')" id="rendDiaHead">Dia ↑</th>
                   <th class="right"></th>
                 </tr>
               </thead>
@@ -191,14 +173,7 @@
                   <div class="sec-sub" id="invSub">—</div>
                 </div>
               </div>
-              <div
-                style="
-                  display: flex;
-                  align-items: center;
-                  gap: 8px;
-                  flex-wrap: wrap;
-                "
-              >
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <div class="cdi-badge">
                   <div class="cdi-dot" id="cdiDot"></div>
                   <span id="cdiLabel">CDI...</span>
@@ -234,14 +209,7 @@
     </div>
     <div class="toast" id="toast">
       <span id="toastMsg"></span>
-      <button
-        class="toast-undo"
-        id="toastUndo"
-        style="display: none"
-        onclick="undoLast()"
-      >
-        Desfazer
-      </button>
+      <button class="toast-undo" id="toastUndo" style="display: none" onclick="undoLast()">Desfazer</button>
     </div>
 
     <!-- Clerk -->
@@ -258,5 +226,4 @@
 
     <script src="script.js"></script>
   </body>
-
 </html>
