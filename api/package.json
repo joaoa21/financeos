@@ -1,0 +1,22 @@
+{
+  "name": "financeos-api",
+  "version": "2.0.0",
+  "private": true,
+  "description": "API do FinanceOS: guarda os dados financeiros de cada conta (login pelo Authik).",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --env-file-if-exists=.env --watch src/index.js",
+    "test": "node --test test/*.test.js",
+    "contas": "node --env-file-if-exists=.env scripts/contas.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "jose": "^6.2.12",
+    "pg": "^8.16.3"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}
