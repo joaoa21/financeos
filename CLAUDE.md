@@ -20,6 +20,6 @@ App de finanças pessoais do dono (João Alberto, designer, pouco de backend; Wi
 
 ## Estado (09/10/2026)
 
-Versão 2 feita na branch `claude/v2-authik`: reescrita do site, API movida para cá (antes `../financeos-api`), login trocado do Clerk para o Authik. Validado com prévia local (API real com banco em memória e login simulado). **Falta publicar** seguindo o README (precisa de domínio próprio para o login) e mover os dados do ID do Clerk para o ID do Authik (`npm run contas -- mover`).
+Versão 2 feita na branch `claude/v2-authik`: reescrita do site, API movida para cá (antes `../financeos-api`), login trocado do Clerk para o Authik. Validado com prévia local (API real com banco em memória e login simulado). **Falta publicar** seguindo o README: site em `finance.joaoa.com.br` e login em `auth.finance.joaoa.com.br` (subdomínios do site pessoal, decisão do dono em 09/10/2026; sem domínio próprio) e mover os dados do ID do Clerk para o ID do Authik (`npm run contas -- mover`).
 
 Como trabalhar: branch nova, PR, merge só com autorização do dono.

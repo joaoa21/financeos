@@ -51,13 +51,22 @@ Testes: `npm test` dentro de `api/` (11 testes: login, versões, formato, CORS, 
 
 ## Publicar (passo a passo)
 
-> ⚠️ **O login do Authik precisa de um domínio próprio.** A sessão fica num cookie de `auth.<domínio>` e o navegador só o envia para sites do **mesmo domínio** (`app.<domínio>`). Num endereço `*.netlify.app` o login não funciona.
+O FinanceOS fica num subdomínio do site pessoal, sem domínio novo:
 
-Siga na ordem. Troque `<domínio>` pelo domínio do FinanceOS (ex.: `financeos.com.br`). É o mesmo caminho do Trackik (`authik/docs/integracao-trackik.md`).
+| Endereço | O que é | Onde roda |
+| --- | --- | --- |
+| `https://finance.joaoa.com.br` | O site | Netlify |
+| `https://auth.finance.joaoa.com.br` | Login (Authik, aplicação `financeos`) | Railway, projeto `authik`, serviço `api` |
+| `https://financeos-api-production.up.railway.app` | API do FinanceOS | Railway |
+| `nao-responda@conta.joaoa.com.br` | Remetente dos e-mails de confirmação e senha | Resend |
+
+> Por que funciona num subdomínio: a sessão fica num cookie de `auth.finance.joaoa.com.br` e o navegador só o envia para sites do **mesmo domínio-base** (`joaoa.com.br`). Por isso `*.netlify.app` não serve, mas `finance.joaoa.com.br` sim. O cookie é preso ao endereço de login e leva o nome da aplicação, então não se mistura com o portfólio, o blog ou outro produto em `joaoa.com.br`.
+
+Siga na ordem (é o mesmo caminho do Trackik, `authik/docs/integracao-trackik.md`). Todos os registros de DNS vão no painel do **joaoa.com.br** (Hostinger): confira o domínio no topo da página antes de salvar.
 
 ### 1. E-mails (Resend)
 
-Em resend.com → **Domains** → adicionar `conta.<domínio>`. Com o DNS na Hostinger, o Resend configura sozinho.
+Em resend.com → **Domains** → adicionar `conta.joaoa.com.br`. Com o DNS na Hostinger, o Resend configura sozinho. O mesmo remetente pode servir para outros projetos pessoais depois.
 
 ### 2. Aplicação no Authik
 
@@ -66,24 +75,24 @@ No painel https://app.authik.com.br → seletor de aplicação → **Nova aplica
 | Campo | Valor |
 | --- | --- |
 | Nome interno | `financeos` |
-| URL de autenticação | `https://auth.<domínio>` |
-| URL do produto | `https://app.<domínio>` |
-| Remetente | `nao-responda@conta.<domínio>` |
+| URL de autenticação | `https://auth.finance.joaoa.com.br` |
+| URL do produto | `https://finance.joaoa.com.br` |
+| Remetente | `nao-responda@conta.joaoa.com.br` |
 
-Em **Configurações → E-mails**, confira as páginas `https://app.<domínio>/verificar-email` e `https://app.<domínio>/redefinir-senha` (o site já tem as duas).
+Em **Configurações → E-mails**, confira as páginas `https://finance.joaoa.com.br/verificar-email` e `https://finance.joaoa.com.br/redefinir-senha` (o site já tem as duas).
 
 ### 3. Endereço de login (Railway, projeto `authik`)
 
-Serviço `api` → **Settings → Networking → Custom Domain** → `auth.<domínio>`, porta 8080. Crie na Hostinger os registros CNAME e TXT que o Railway mostrar, **no domínio do FinanceOS** (confira o domínio no topo da página de DNS antes de salvar).
+Serviço `api` → **Settings → Networking → Custom Domain** → `auth.finance.joaoa.com.br`, porta 8080. Na Hostinger, crie os registros que o Railway mostrar: o CNAME tem o nome `auth.finance` (a Hostinger completa com `.joaoa.com.br`), mais o TXT de verificação.
 
 ### 4. API (Railway, serviço do FinanceOS)
 
 1. No serviço atual da API: **Settings → Source** → trocar o repositório para `joaoa21/financeos` e **Root Directory** = `api`.
 2. **Variables**: apagar `CLERK_SECRET_KEY` e `FRONTEND_URL`; criar:
    ```
-   AUTH_URL=https://auth.<domínio>
+   AUTH_URL=https://auth.finance.joaoa.com.br
    AUTH_AUDIENCE=financeos
-   FRONTEND_ORIGINS=https://app.<domínio>
+   FRONTEND_ORIGINS=https://finance.joaoa.com.br
    NODE_ENV=production
    ```
    (`DATABASE_URL` continua a mesma.) A API acrescenta sozinha a coluna nova no banco ao ligar.
@@ -91,14 +100,13 @@ Serviço `api` → **Settings → Networking → Custom Domain** → `auth.<dom�
 
 ### 5. Site (Netlify)
 
-1. Em `web/.env.production`, troque `SEU-DOMINIO` pelo domínio e faça commit (não são segredos).
-2. Na Netlify, ligue o site ao repositório `joaoa21/financeos`. O arquivo `netlify.toml` na raiz já diz para usar a pasta `web`.
-3. **Domain management** → `app.<domínio>` (a Netlify pede um TXT de verificação e um CNAME).
-4. Para mostrar "Continuar com Google": configure a chave do Google na aplicação `financeos` do Authik (`authik/docs/login-google.md`) e adicione `VITE_GOOGLE_LOGIN=1` em `web/.env.production`.
+1. Na Netlify, ligue o site ao repositório `joaoa21/financeos`. O `netlify.toml` na raiz já diz para usar a pasta `web`, e `web/.env.production` já tem os endereços.
+2. **Domain management → Add a domain** → `finance.joaoa.com.br`. Na Hostinger, crie o CNAME com nome `finance` apontando para o endereço `*.netlify.app` do site (a Netlify mostra o valor exato).
+3. Para mostrar "Continuar com Google": configure a chave do Google na aplicação `financeos` do Authik (`authik/docs/login-google.md`) e adicione `VITE_GOOGLE_LOGIN=1` em `web/.env.production`.
 
 ### 6. Trazer seus dados do Clerk para a conta nova
 
-1. Abra `https://app.<domínio>`, crie sua conta e confirme o e-mail. **Não cadastre nada ainda.**
+1. Abra `https://finance.joaoa.com.br`, crie sua conta e confirme o e-mail. **Não cadastre nada ainda.**
 2. Pegue o ID da conta nova no painel do Authik (aplicação FinanceOS → Usuários → detalhe → copiar ID).
 3. No Railway, botão direito no serviço da API → **Copy SSH Command**, cole no PowerShell e rode:
    ```
