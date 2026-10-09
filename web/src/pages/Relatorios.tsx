@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CategoriasChart, FluxoChart } from '../components/Charts.tsx';
 import { Segmented } from '../components/Form.tsx';
+import { IconeDestaque } from '../components/CategoriaIcone.tsx';
 import { useData } from '../data.tsx';
 import { pct, tom } from '../format.ts';
 import { gastosPorCategoria, resumo } from '../model/calc.ts';
@@ -57,9 +58,10 @@ export function Relatorios() {
 
       {comDados.length === 0 ? (
         <section className="cartao boas-vindas">
-          <span className="boas-vindas__icone" aria-hidden="true">
-            📊
-          </span>
+          <IconeDestaque>
+            <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+            <path d="M8 17v-5M13 17V8M18 17v-9" />
+          </IconeDestaque>
           <h2>Ainda não há meses para comparar</h2>
           <p>Os relatórios aparecem conforme você registra seus meses.</p>
         </section>

@@ -1,6 +1,6 @@
 import { businessDaysBetween, compareKeys, currentKey, todayISO } from './dates.ts';
 import { emptyMonth, uid } from './migrate.ts';
-import type { Despesa, Estado, Investimento, Mes, Renda } from './types.ts';
+import type { Despesa, Estado, Forma, Investimento, Mes, Renda } from './types.ts';
 
 // Todas as contas do FinanceOS num lugar só (as telas só mostram o resultado).
 
@@ -198,4 +198,35 @@ export function mesAnteriorComDados(estado: Estado, key: string): string | null 
 
 export function round2(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+// ─── Por forma de pagamento ──────────────────────────────────────
+
+export type FormaOuSem = Forma | 'sem';
+
+export interface TotalForma {
+  forma: FormaOuSem;
+  /** Tudo o que sai por essa forma no mês (pago pelo valor pago, o resto pelo previsto). */
+  total: number;
+  pago: number;
+  /** Ainda não pago (inclui os agendados: o dinheiro ainda precisa estar na conta). */
+  falta: number;
+  quantidade: number;
+}
+
+/**
+ * Totais das despesas do mês por forma de pagamento (cartão, boleto, pix/débito), para
+ * separar o dinheiro de cada conta assim que a renda cai. "sem" só aparece se houver
+ * despesa sem forma definida (dados antigos).
+ */
+export function totaisPorForma(m: Mes): TotalForma[] {
+  const ordem: FormaOuSem[] = ['cartao', 'boleto', 'pix', 'sem'];
+  return ordem
+    .map((forma) => {
+      const itens = m.despesas.filter((d) => (d.subtipo ?? 'sem') === forma);
+      const pago = sum(itens, (d) => (d.pago ? d.realizado : 0));
+      const falta = sum(itens, (d) => (d.pago ? 0 : d.planejado));
+      return { forma, total: pago + falta, pago, falta, quantidade: itens.length };
+    })
+    .filter((t) => t.forma !== 'sem' || t.quantidade > 0);
 }

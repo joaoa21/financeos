@@ -3,6 +3,8 @@ import { CategoriasChart, FluxoChart, Progresso } from '../components/Charts.tsx
 import { IconAlert, IconArrowDown, IconArrowUp, IconCalendar, IconChevronRight, IconLock, IconPencil, IconPiggy, IconSparkle, IconTrend, IconWallet } from '../components/Icons.tsx';
 import { Lista, type LinhaLancamento } from '../components/Lista.tsx';
 import { Confirm } from '../components/Modal.tsx';
+import { PorForma } from '../components/PorForma.tsx';
+import { IconeDestaque } from '../components/CategoriaIcone.tsx';
 import { useData } from '../data.tsx';
 import { pct, plural, tom } from '../format.ts';
 import { gastosPorCategoria, mesAnteriorComDados, resumo, situacao, valorDespesa, valorRenda } from '../model/calc.ts';
@@ -114,6 +116,16 @@ export function Visao() {
           </div>
         </article>
       </section>
+
+      {mes.despesas.length > 0 && (
+        <section className="separar" aria-labelledby="t-separar">
+          <header className="separar__topo">
+            <h2 id="t-separar">Separar o dinheiro</h2>
+            <span className="bloco__extra">Quanto vai para cada forma de pagamento neste mês</span>
+          </header>
+          <PorForma mes={mes} />
+        </section>
+      )}
 
       {atrasados.length > 0 && (
         <div className="alerta" role="alert">
@@ -253,9 +265,17 @@ function MesVazio() {
     <div className="pagina">
       {legado && <AvisoLegado meses={legado.meses} onImportar={importarLegado} onDescartar={descartarLegado} />}
       <section className="cartao boas-vindas">
-        <span className="boas-vindas__icone" aria-hidden="true">
-          {primeiraVez ? '👋' : '🗓️'}
-        </span>
+        {primeiraVez ? (
+          <IconeDestaque>
+            <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2" />
+            <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+          </IconeDestaque>
+        ) : (
+          <IconeDestaque>
+            <rect x="3" y="4.5" width="18" height="16.5" rx="2.5" />
+            <path d="M3 9.5h18M8 2.5v4M16 2.5v4M12 13v5M9.5 15.5h5" />
+          </IconeDestaque>
+        )}
         <h2>{primeiraVez ? 'Vamos organizar seu mês' : `${monthName(ui.mes)} ainda está em branco`}</h2>
         <p>
           {primeiraVez

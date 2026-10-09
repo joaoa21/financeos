@@ -4,9 +4,10 @@ import { Segmented } from '../components/Form.tsx';
 import { IconCopy, IconDots, IconDownload, IconPlus, IconSearch, IconTrash, IconX } from '../components/Icons.tsx';
 import { Lista, type LinhaLancamento } from '../components/Lista.tsx';
 import { Menu } from '../components/Menu.tsx';
+import { PorForma } from '../components/PorForma.tsx';
 import { Confirm } from '../components/Modal.tsx';
 import { plural } from '../format.ts';
-import { type Situacao, situacao } from '../model/calc.ts';
+import { type FormaOuSem, type Situacao, situacao } from '../model/calc.ts';
 import { CATEGORIAS } from '../model/categorias.ts';
 import { monthName, shiftKey } from '../model/dates.ts';
 import { Money } from '../prefs.tsx';
@@ -31,6 +32,7 @@ export function Lancamentos() {
   const [busca, setBusca] = useState('');
   const [ordem, setOrdem] = useState<Ordem>('dia');
   const [cat, setCat] = useState('');
+  const [forma, setForma] = useState<FormaOuSem | ''>('');
   const [limpar, setLimpar] = useState(false);
 
   const linhas = useMemo<LinhaLancamento[]>(() => {
@@ -47,6 +49,7 @@ export function Lancamentos() {
           if (filtro === 'fixas' && d.tipo !== 'fixo') return false;
           if (filtro === 'esporadicas' && d.tipo !== 'esporadico') return false;
           if (cat && (d.categoria ?? '') !== (cat === '__sem' ? '' : cat)) return false;
+          if (forma && (d.subtipo ?? 'sem') !== forma) return false;
         }
         return true;
       })
@@ -57,7 +60,7 @@ export function Lancamentos() {
             ? a.item.nome.localeCompare(b.item.nome, 'pt-BR')
             : (a.item.data ?? 99) - (b.item.data ?? 99) || a.item.nome.localeCompare(b.item.nome, 'pt-BR'),
       );
-  }, [mes, key, kind, filtro, busca, ordem, cat]);
+  }, [mes, key, kind, filtro, busca, ordem, cat, forma]);
 
   const total = linhas.reduce((s, l) => s + (l.situacao === 'pago' ? l.item.realizado : l.item.planejado), 0);
   const feito = linhas.filter((l) => l.situacao === 'pago').reduce((s, l) => s + l.item.realizado, 0);
@@ -65,7 +68,7 @@ export function Lancamentos() {
     despesa: mes.despesas.length,
     renda: mes.rendas.length,
   };
-  const filtrando = !!busca || filtro !== 'todos' || !!cat;
+  const filtrando = !!busca || filtro !== 'todos' || !!cat || !!forma;
   const categoriasUsadas = CATEGORIAS.filter((c) => mes.despesas.some((d) => d.categoria === c.id));
 
   return (
@@ -79,6 +82,7 @@ export function Lancamentos() {
             setKind(k);
             setFiltro('todos');
             setCat('');
+            setForma('');
           }}
           options={[
             { value: 'despesa', label: <>Despesas <span className="contagem">{totais.despesa}</span></> },
@@ -102,6 +106,8 @@ export function Lancamentos() {
           />
         </div>
       </div>
+
+      {kind === 'despesa' && <PorForma mes={mes} selecionada={forma} onSelect={setForma} />}
 
       <div className="filtros">
         <label className="busca">
@@ -128,10 +134,10 @@ export function Lancamentos() {
               <option value="">Todas as categorias</option>
               {categoriasUsadas.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.emoji} {c.nome}
+                  {c.nome}
                 </option>
               ))}
-              {mes.despesas.some((d) => !d.categoria) && <option value="__sem">🏷️ Sem categoria</option>}
+              {mes.despesas.some((d) => !d.categoria) && <option value="__sem">Sem categoria</option>}
             </select>
           )}
           <select className="campo campo--pequeno" aria-label="Ordenar por" value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)}>
@@ -154,6 +160,7 @@ export function Lancamentos() {
                   setBusca('');
                   setFiltro('todos');
                   setCat('');
+                  setForma('');
                 }}
               >
                 <IconX size={14} /> Limpar filtros

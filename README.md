@@ -18,7 +18,8 @@ O site e a API ficam no mesmo repositório (como no Trackik): uma mudança que m
 - **Nada se perde entre abas/aparelhos**: cada salvamento leva o número da versão; se outro aparelho salvou antes, as duas versões são juntadas lançamento por lançamento (`web/src/model/merge.ts`).
 - **Indicador de salvamento** ("Tudo salvo" / "Salvando…" / "Sem conexão — tentando de novo") e aviso ao fechar a aba com algo por salvar. Antes, uma falha ao salvar só aparecia no console.
 - **Preparar/fechar mês** numa janela só, mostrando exatamente o que vai entrar. Antes, só *navegar* até um mês copiava as despesas recorrentes (e uma despesa apagada voltava sozinha).
-- **Categorias** com sugestão automática pelo nome, gráfico "Para onde vai o dinheiro", "Próximos vencimentos" e atrasados em destaque.
+- **Categorias** com ícones próprios e sugestão automática pelo nome, gráfico "Para onde vai o dinheiro", "Próximos vencimentos" e atrasados em destaque.
+- **Separar o dinheiro**: total do mês por forma de pagamento (cartão, boleto, pix/débito), com quanto falta pagar em cada uma. Na Visão geral e em Lançamentos, onde cada cartão também filtra a lista.
 - **Valor pago diferente do previsto** (juros, desconto) e agendamento no banco.
 - **Aportes simplificados**: duas perguntas ("de onde vem o dinheiro?" e "já fez?") no lugar dos quatro tipos de impacto.
 - **Desfazer** em toda exclusão, inclusive "limpar mês". "Apagar tudo" pede para digitar APAGAR.
@@ -46,7 +47,7 @@ npm run dev               # abra http://financeos.localhost:5173
 
 No Authik local, cadastre a aplicação `financeos` com URL de autenticação `http://auth.financeos.localhost:4000` e URL do produto `http://financeos.localhost:5173` (veja `authik/docs/sdk.md`).
 
-Testes: `npm test` dentro de `api/` (11 testes: login, versões, formato, CORS, contas excluídas) e de `web/` (16 testes: migração dos dados antigos, contas do mês, situação, CDI, preparo do mês, mescla entre aparelhos, categorias). `npm run build` em `web/` confere os tipos e gera o site.
+Testes: `npm test` dentro de `api/` (11 testes: login, versões, formato, CORS, contas excluídas) e de `web/` (17 testes: totais por forma de pagamento, migração dos dados antigos, contas do mês, situação, CDI, preparo do mês, mescla entre aparelhos, categorias). `npm run build` em `web/` confere os tipos e gera o site.
 
 ## Publicar (passo a passo)
 

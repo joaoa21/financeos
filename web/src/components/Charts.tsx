@@ -2,6 +2,7 @@ import { type RefObject, useEffect, useRef, useState } from 'react';
 import { brl, brlCompacto } from '../format.ts';
 import { categoria } from '../model/categorias.ts';
 import { Money, usePrefs } from '../prefs.tsx';
+import { CategoriaIcone } from './CategoriaIcone.tsx';
 
 // Gráficos feitos à mão em SVG (sem biblioteca). Cores das séries validadas para
 // daltonismo; legenda sempre visível e a tabela fica na página de relatórios.
@@ -117,10 +118,13 @@ export function CategoriasChart({ itens, limite = 6 }: { itens: { id: string; to
   return (
     <ul className="categorias">
       {linhas.map((l) => {
-        const c = l.id === '__resto' ? { emoji: '…', nome: 'Demais categorias' } : categoria(l.id);
+        const resto = l.id === '__resto';
+        const c = resto ? { nome: 'Demais categorias' } : categoria(l.id);
         return (
           <li key={l.id} title={`${c.nome}: ${brl(l.total)}`}>
-            <span className="categorias__emoji" aria-hidden="true">{c.emoji}</span>
+            <span className="categorias__icone">
+              <CategoriaIcone id={resto ? 'outros' : l.id} tamanho={30} />
+            </span>
             <span className="categorias__nome">{c.nome}</span>
             <span className="categorias__valor">
               <Money value={l.total} />

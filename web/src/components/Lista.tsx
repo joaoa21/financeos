@@ -4,6 +4,7 @@ import type { Despesa, Renda } from '../model/types.ts';
 import { Money } from '../prefs.tsx';
 import { type Kind, useActions, useUi } from '../ui.tsx';
 import { useToast } from './Toast.tsx';
+import { CategoriaIcone, RendaIcone } from './CategoriaIcone.tsx';
 import { IconCalendarCheck, IconCheck, IconDots, IconPencil, IconRepeat, IconTrash } from './Icons.tsx';
 import { Menu } from './Menu.tsx';
 
@@ -72,9 +73,7 @@ function Linha({ linha, compacta }: { linha: LinhaLancamento; compacta?: boolean
         <IconCheck size={14} />
       </button>
       <button type="button" className="linha__principal" onClick={() => ui.editarLancamento(kind, item.id)} title="Editar">
-        <span className={`linha__icone${kind === 'renda' ? ' linha__icone--renda' : ''}`} aria-hidden="true">
-          {cat ? cat.emoji : '💰'}
-        </span>
+        <span className="linha__icone">{despesa ? <CategoriaIcone id={despesa.categoria} /> : <RendaIcone />}</span>
         <span className="linha__texto">
           <span className="linha__nome">
             {item.nome}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { IconCheck, IconCircle, IconDots, IconPencil, IconPlus, IconTrash, IconTrend } from '../components/Icons.tsx';
 import { Menu } from '../components/Menu.tsx';
+import { IconeDestaque } from '../components/CategoriaIcone.tsx';
 import { fullDate, plural, tom } from '../format.ts';
 import { valorInvestimento } from '../model/calc.ts';
 import type { Investimento } from '../model/types.ts';
@@ -33,9 +34,10 @@ export function Investimentos() {
 
       {mes.investimentos.length === 0 ? (
         <section className="cartao boas-vindas">
-          <span className="boas-vindas__icone" aria-hidden="true">
-            📈
-          </span>
+          <IconeDestaque>
+            <path d="m3 17 6-6 4 4 8-8" />
+            <path d="M14 7h7v7" />
+          </IconeDestaque>
           <h2>Nenhum investimento neste mês</h2>
           <p>Cadastre seus CDBs, Tesouro e ações. Os que rendem pelo CDI têm o valor atualizado todo dia útil com a taxa do Banco Central.</p>
           <div className="boas-vindas__acoes">

@@ -1,7 +1,9 @@
 import { useId, useMemo, useState } from 'react';
 import { useData } from '../data.tsx';
 import { daysInMonth, monthName } from '../model/dates.ts';
-import { CATEGORIAS, sugerirCategoria } from '../model/categorias.ts';
+import { CATEGORIAS, categoria as achaCategoria, sugerirCategoria } from '../model/categorias.ts';
+import { CategoriaIcone } from './CategoriaIcone.tsx';
+import { IconChevronDown } from './Icons.tsx';
 import { emptyMonth, uid } from '../model/migrate.ts';
 import type { Despesa, Forma, Renda, TipoDespesa } from '../model/types.ts';
 import { useToast } from './Toast.tsx';
@@ -49,7 +51,7 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
       dia: existente?.data ? String(existente.data) : '',
       categoria: d?.categoria ?? '',
       tipo: d?.tipo ?? 'fixo',
-      forma: d?.subtipo ?? 'pix',
+      forma: d?.subtipo ?? 'boleto',
       recorrente: existente?.autoReplicar ?? false,
       feito: (props.kind === 'despesa' ? d?.pago : r?.recebido) ?? false,
       valorFeito: existente?.realizado || existente?.planejado || 0,
@@ -228,26 +230,13 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
 
       {despesa && (
         <>
-          <Field label="Categoria">
-            {(id) => (
-              <select
-                id={id}
-                className="campo"
-                value={form.categoria}
-                onChange={(e) => {
-                  setCategoriaManual(true);
-                  set({ categoria: e.target.value });
-                }}
-              >
-                <option value="">Sem categoria</option>
-                {CATEGORIAS.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.emoji} {c.nome}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
+          <EscolherCategoria
+            value={form.categoria}
+            onChange={(categoria) => {
+              setCategoriaManual(true);
+              set({ categoria });
+            }}
+          />
           <div className="campos-linha">
             <div className="campo-grupo">
               <span className="campo-rotulo">Tipo</span>
@@ -307,5 +296,53 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
         )}
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Categoria escolhida por ícone: o botão mostra a atual e abre, dentro do próprio
+ * formulário, a grade com todas (sem menu flutuante, que a janela cortaria).
+ */
+function EscolherCategoria({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const [aberto, setAberto] = useState(false);
+  const atual = achaCategoria(value);
+  const opcoes = [...CATEGORIAS, { ...achaCategoria(''), id: '' }];
+  return (
+    <div className="campo-grupo">
+      <span className="campo-rotulo" id="rotulo-categoria">
+        Categoria
+      </span>
+      <button
+        type="button"
+        className="campo escolher-categoria"
+        aria-expanded={aberto}
+        aria-labelledby="rotulo-categoria escolher-categoria-valor"
+        onClick={() => setAberto((a) => !a)}
+      >
+        <CategoriaIcone id={value} tamanho={26} />
+        <span id="escolher-categoria-valor">{atual.nome}</span>
+        <IconChevronDown size={16} />
+      </button>
+      {aberto && (
+        <div className="grade-categorias" role="radiogroup" aria-labelledby="rotulo-categoria">
+          {opcoes.map((c) => (
+            <button
+              key={c.id || 'sem'}
+              type="button"
+              role="radio"
+              aria-checked={c.id === value}
+              className="grade-categorias__opcao"
+              onClick={() => {
+                onChange(c.id);
+                setAberto(false);
+              }}
+            >
+              <CategoriaIcone id={c.id} tamanho={28} />
+              <span>{c.nome}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

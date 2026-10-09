@@ -689,7 +689,13 @@ input[type="number"].campo::-webkit-inner-spin-button { -webkit-appearance: none
 .fechar-mes p { color: var(--texto-2); font-size: .875rem; margin-top: 2px; max-width: 640px; }
 
 .boas-vindas { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 48px 24px; }
-.boas-vindas__icone { font-size: 2.25rem; line-height: 1; margin-bottom: 4px; }
+.icone-destaque {
+  display: grid; place-items: center;
+  width: 56px; height: 56px; margin-bottom: 4px;
+  border-radius: 16px;
+  background: var(--destaque-suave); color: var(--destaque);
+}
+:root[data-theme="dark"] .icone-destaque { color: var(--destaque-forte); }
 .boas-vindas h2 { font-size: 1.375rem; font-weight: 650; letter-spacing: -.02em; }
 .boas-vindas p { max-width: 520px; color: var(--texto-2); }
 .boas-vindas__acoes { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
@@ -739,13 +745,7 @@ input[type="number"].campo::-webkit-inner-spin-button { -webkit-appearance: none
   background: none; text-align: left;
 }
 .linha__principal:hover .linha__nome { text-decoration: underline; text-decoration-color: var(--borda-forte); text-underline-offset: 3px; }
-.linha__icone {
-  display: grid; place-items: center; flex: none;
-  width: 36px; height: 36px; border-radius: 10px;
-  background: var(--cartao-2);
-  font-size: 1.05rem; line-height: 1;
-}
-.linha__icone--renda { background: var(--positivo-suave); }
+.linha__icone { display: grid; flex: none; }
 .linha__texto { display: flex; flex-direction: column; min-width: 0; }
 .linha__nome { display: flex; align-items: center; gap: 6px; font-weight: 550; overflow: hidden; }
 .linha__nome { white-space: nowrap; text-overflow: ellipsis; }
@@ -756,7 +756,7 @@ input[type="number"].campo::-webkit-inner-spin-button { -webkit-appearance: none
 .linha__menu .menu__gatilho { width: 32px; height: 32px; min-width: 32px; }
 .lista--compacta .linha { grid-template-columns: auto minmax(0, 1fr) auto auto; }
 .lista--compacta .linha__menu { display: none; }
-.lista--compacta .linha__icone { width: 32px; height: 32px; font-size: .95rem; }
+.lista--compacta .icone-quadro { width: 32px !important; height: 32px !important; }
 
 /* ---------- Página de lançamentos ---------- */
 
@@ -836,10 +836,10 @@ path.serie-despesa { fill: var(--serie-despesa); }
 
 .categorias { display: flex; flex-direction: column; gap: 12px; }
 .categorias li {
-  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-rows: auto auto;
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; grid-template-rows: auto auto;
   column-gap: 10px; row-gap: 5px; align-items: center;
 }
-.categorias__emoji { grid-row: span 2; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--cartao-2); font-size: .9rem; }
+.categorias__icone { grid-row: span 2; display: grid; }
 .categorias__nome { font-size: .875rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .categorias__valor { display: flex; gap: 8px; align-items: baseline; font-weight: 600; font-size: .875rem; }
 .categorias__pct { font-size: .75rem; font-weight: 500; color: var(--texto-3); min-width: 32px; text-align: right; }
@@ -985,4 +985,76 @@ path.serie-despesa { fill: var(--serie-despesa); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ---------- Ícones de categoria e forma de pagamento ---------- */
+
+.icone-quadro {
+  display: inline-grid; place-items: center; flex: none;
+  border-radius: 30%;
+  background: color-mix(in srgb, var(--cor) 13%, var(--cartao));
+  color: var(--cor);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cor) 16%, transparent);
+}
+:root[data-theme="dark"] .icone-quadro {
+  background: color-mix(in srgb, var(--cor) 20%, var(--cartao));
+  color: color-mix(in srgb, var(--cor) 70%, #fff);
+}
+
+.escolher-categoria {
+  display: flex; align-items: center; gap: 10px;
+  height: 46px; padding: 0 12px 0 8px;
+  text-align: left; cursor: pointer;
+}
+.escolher-categoria span:not(.icone-quadro) { flex: 1; }
+.escolher-categoria > svg { color: var(--texto-3); transition: transform .15s; }
+.escolher-categoria[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.grade-categorias {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--borda); border-radius: var(--raio-medio);
+  background: var(--cartao-2);
+  animation: aparecer .12s ease-out;
+}
+.grade-categorias__opcao {
+  display: flex; align-items: center; gap: 8px;
+  min-width: 0; padding: 6px;
+  border: 1px solid transparent; border-radius: 8px;
+  background: transparent; color: var(--texto);
+  font-size: .8125rem; text-align: left;
+}
+.grade-categorias__opcao span:last-child { line-height: 1.2; overflow-wrap: anywhere; }
+.grade-categorias__opcao:hover { background: var(--cartao); }
+.grade-categorias__opcao[aria-checked="true"] { background: var(--cartao); border-color: var(--destaque-borda); font-weight: 600; }
+
+/* ---------- Separar o dinheiro (totais por forma de pagamento) ---------- */
+
+.separar { display: flex; flex-direction: column; gap: 10px; }
+.separar__topo { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.separar__topo h2 { font-size: 1rem; font-weight: 650; }
+.por-forma { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.por-forma__item {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 16px;
+  text-align: left; color: var(--texto);
+}
+.por-forma__item--botao { cursor: pointer; transition: border-color .15s, box-shadow .15s, background-color .15s; }
+.por-forma__item--botao:hover { border-color: var(--borda-forte); }
+.por-forma__item--botao[aria-pressed="true"] { border-color: var(--destaque); box-shadow: 0 0 0 3px var(--destaque-suave); }
+.por-forma__topo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.por-forma__nome { font-weight: 600; flex: 1; }
+.por-forma__qtd { font-size: .75rem; color: var(--texto-3); }
+.por-forma__total { font-size: 1.375rem; font-weight: 650; letter-spacing: -.02em; }
+.por-forma__falta { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: .78rem; color: var(--texto-3); }
+.por-forma__falta .valor { color: var(--texto-2); font-weight: 600; }
+.por-forma__falta--ok { color: var(--positivo); }
+
+@media (max-width: 640px) {
+  .por-forma { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .por-forma__item { display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 12px 14px; }
+  .por-forma__topo { margin: 0; }
+  .por-forma__total { font-size: 1.125rem; grid-row: span 2; text-align: right; }
+  .por-forma__falta { grid-column: 1; }
+  .por-forma__qtd { display: none; }
+  .grade-categorias { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

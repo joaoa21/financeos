@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { preparar, previsaoPreparo, resumo, situacao, valorInvestimento } from './calc.ts';
+import { preparar, previsaoPreparo, resumo, situacao, totaisPorForma, valorInvestimento } from './calc.ts';
 import { sugerirCategoria, sugerirTipo } from './categorias.ts';
 import { businessDaysBetween, shiftKey } from './dates.ts';
 import { migrate } from './migrate.ts';
@@ -216,5 +216,17 @@ describe('mescla com outro aparelho', () => {
     local['2026-10']!.despesas.splice(0, 1);
     const { estado } = merge3(base, local, clone());
     assert.deepEqual(estado['2026-10']!.despesas.map((x) => x.id), ['b', 'c']);
+  });
+});
+
+describe('totais por forma de pagamento', () => {
+  it('separa cartão, boleto e pix; agendado conta como falta', () => {
+    const m = migrate(legado)['2026-09']!;
+    const t = Object.fromEntries(totaisPorForma(m).map((x) => [x.forma, x]));
+    // Aluguel (boleto, pago 1500); Fatura (cartão antigo, agendada 800); Presente (esporádica sem forma, 100)
+    assert.deepEqual([t.boleto!.total, t.boleto!.pago, t.boleto!.falta], [1500, 1500, 0]);
+    assert.deepEqual([t.cartao!.total, t.cartao!.falta], [800, 800]);
+    assert.equal(t.pix!.total, 0);
+    assert.equal(t.sem!.total, 100);
   });
 });
