@@ -62,16 +62,33 @@ function Linha({ linha, compacta }: { linha: LinhaLancamento; compacta?: boolean
 
   return (
     <li className={`linha linha--${situacao}${feito ? ' linha--feita' : ''}`}>
-      <button
-        type="button"
-        className={`marcar marcar--${kind}${feito ? ' marcar--feito' : ''}`}
-        onClick={marcar}
-        aria-pressed={feito}
-        aria-label={feito ? `Desmarcar "${item.nome}"` : kind === 'despesa' ? `Marcar "${item.nome}" como paga` : `Marcar "${item.nome}" como recebida`}
-        title={feito ? 'Desmarcar' : kind === 'despesa' ? 'Marcar como paga' : 'Marcar como recebida'}
-      >
-        <IconCheck size={14} />
-      </button>
+      <span className="linha__marcas">
+        <button
+          type="button"
+          className={`marcar marcar--${kind}${feito ? ' marcar--feito' : ''}`}
+          onClick={marcar}
+          aria-pressed={feito}
+          aria-label={feito ? `Desmarcar "${item.nome}"` : kind === 'despesa' ? `Marcar "${item.nome}" como paga` : `Marcar "${item.nome}" como recebida`}
+          title={feito ? 'Desmarcar' : kind === 'despesa' ? 'Marcar como paga' : 'Marcar como recebida'}
+        >
+          <IconCheck size={14} />
+        </button>
+        {despesa && !feito ? (
+          <button
+            type="button"
+            className={`marcar marcar--agendar${despesa.agendado ? ' marcar--agendado' : ''}`}
+            onClick={() => actions.toggleAgendado(item.id)}
+            aria-pressed={despesa.agendado}
+            aria-label={despesa.agendado ? `Desmarcar agendamento de "${item.nome}"` : `Marcar "${item.nome}" como agendada no banco`}
+            title={despesa.agendado ? 'Desmarcar agendamento' : 'Marcar como agendada no banco'}
+          >
+            <IconCalendarCheck size={14} />
+          </button>
+        ) : (
+          // Mantém as colunas alinhadas quando não há o que agendar (paga ou renda).
+          (despesa || compacta) && <span className="marcar marcar--vazio" aria-hidden="true" />
+        )}
+      </span>
       <button type="button" className="linha__principal" onClick={() => ui.editarLancamento(kind, item.id)} title="Editar">
         <span className="linha__icone">{despesa ? <CategoriaIcone id={despesa.categoria} /> : <RendaIcone />}</span>
         <span className="linha__texto">
