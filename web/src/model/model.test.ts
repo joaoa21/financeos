@@ -158,6 +158,8 @@ describe('categorias', () => {
     assert.equal(sugerirCategoria('Conta de luz'), 'contas');
     assert.equal(sugerirCategoria('Plano de saúde'), 'saude');
     assert.equal(sugerirCategoria('Claudete'), null);
+    assert.equal(sugerirCategoria('Figma'), 'trabalho');
+    assert.equal(sugerirCategoria('Claude Pro'), 'trabalho');
   });
 
   it('sugere o tipo do investimento', () => {

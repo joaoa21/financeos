@@ -46,6 +46,12 @@ const DESENHOS: Record<string, ReactNode> = {
       <path d="M6 11.5V16c3.3 3 8.7 3 12 0v-4.5M22 9.5v5" />
     </>
   ),
+  trabalho: (
+    <>
+      <rect x="2.5" y="7" width="19" height="13.5" rx="2" />
+      <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2.5 13h19M10.5 13v1.5h3V13" />
+    </>
+  ),
   assinaturas: (
     <>
       <rect x="2.5" y="6.5" width="19" height="14" rx="2.5" />
