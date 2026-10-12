@@ -52,12 +52,29 @@ export function Visao() {
   const categorias = gastosPorCategoria(mes);
   const atrasados = pendentes.filter((l) => l.situacao === 'atrasado');
   const semCategoria = mes.despesas.filter((d) => !d.categoria).length;
+  // Mês que nasceu só com parcelas de compras: ainda falta trazer renda, saldo e contas fixas.
+  const anterior = mesAnteriorComDados(estado, key);
+  const soParcelas = !!anterior && !mes.rendas.length && !mes.saldoInicial && mes.despesas.length > 0 && mes.despesas.every((d) => d.parcela);
 
   if (!existe) return <MesVazio />;
 
   return (
     <div className="pagina">
       {legado && <AvisoLegado meses={legado.meses} onImportar={importarLegado} onDescartar={descartarLegado} />}
+
+      {soParcelas && anterior && (
+        <section className="cartao aviso-legado" aria-labelledby="t-preparar">
+          <div>
+            <h2 id="t-preparar">{monthName(key).split(' ')[0]} ainda não foi preparado</h2>
+            <p>Por enquanto só tem parcelas de compras. Traga de {monthName(anterior)} a renda, o saldo e as contas que se repetem.</p>
+          </div>
+          <div className="aviso-legado__acoes">
+            <button type="button" className="btn" onClick={() => ui.prepararMes(key)}>
+              Trazer de {monthName(anterior).split(' ')[0]}
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="destaques" aria-label="Resumo do mês">
         <article className="cartao destaque destaque--principal">

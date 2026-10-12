@@ -22,6 +22,14 @@ export interface Despesa {
   /** Pagamento já agendado no banco: o dinheiro está comprometido. */
   agendado: boolean;
   categoria?: string | null;
+  /** Compra parcelada: esta é a parcela `n` de `de`; `grupo` liga as parcelas da mesma compra. */
+  parcela?: Parcela;
+}
+
+export interface Parcela {
+  n: number;
+  de: number;
+  grupo: string;
 }
 
 export interface Renda {

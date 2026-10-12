@@ -1,4 +1,4 @@
-import { businessDaysBetween, compareKeys, currentKey, diaNoMes, todayISO } from './dates.ts';
+import { businessDaysBetween, compareKeys, currentKey, diaNoMes, shiftKey, todayISO } from './dates.ts';
 import { emptyMonth, uid } from './migrate.ts';
 import type { Despesa, Estado, Forma, Investimento, Mes, Renda } from './types.ts';
 
@@ -152,7 +152,8 @@ export function previsaoPreparo(estado: Estado, origem: string, destino: string,
   const despesasExistentes = new Set(para.despesas.map((d) => nomeKey(d.nome)));
   const rendasExistentes = new Set(para.rendas.map((r) => nomeKey(r.nome)));
   const invExistentes = new Set(para.investimentos.map((i) => `${nomeKey(i.nome)}|${i.tipo}`));
-  const despesas = de.despesas.filter((d) => d.tipo === 'fixo' && !despesasExistentes.has(nomeKey(d.nome)));
+  // Parcelas não entram: cada uma já foi criada no seu mês.
+  const despesas = de.despesas.filter((d) => d.tipo === 'fixo' && !d.parcela && !despesasExistentes.has(nomeKey(d.nome)));
   const rendas = de.rendas.filter((r) => !rendasExistentes.has(nomeKey(r.nome)));
   return {
     saldo: resumo(de, cdiAnual).naConta,
@@ -200,6 +201,71 @@ export function mesAnteriorComDados(estado: Estado, key: string): string | null 
 
 export function round2(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+// ─── Parcelas e "aplicar nos meses seguintes" ────────────────────
+
+export const MAX_PARCELAS = 120;
+
+/**
+ * Compra parcelada: cria as parcelas `atual` até `total`, uma por mês a partir de `key`
+ * (os meses que ainda não existem nascem com a parcela). Só a primeira herda "paga"/"agendada".
+ * Devolve o mês da última parcela.
+ */
+export function parcelar(estado: Estado, key: string, item: Omit<Despesa, 'id' | 'parcela'>, atual: number, total: number): string {
+  const grupo = uid();
+  let ultimo = key;
+  for (let n = atual; n <= total; n++) {
+    ultimo = shiftKey(key, n - atual);
+    const primeira = n === atual;
+    (estado[ultimo] ??= emptyMonth()).despesas.push({
+      ...item,
+      id: uid(),
+      autoReplicar: false,
+      pago: primeira && item.pago,
+      realizado: primeira ? item.realizado : 0,
+      agendado: primeira && item.agendado,
+      parcela: { n, de: total, grupo },
+    });
+  }
+  return ultimo;
+}
+
+export interface Alvo {
+  key: string;
+  id: string;
+}
+
+const feito = (x: Despesa | Renda) => ('pago' in x ? x.pago : x.recebido);
+
+/**
+ * O mesmo lançamento nos meses seguintes, ainda não pago/recebido: as próximas parcelas
+ * da mesma compra ou, para os demais, os lançamentos com o mesmo nome.
+ */
+export function seguintes(estado: Estado, key: string, kind: 'despesa' | 'renda', item: Despesa | Renda): Alvo[] {
+  const nome = nomeKey(item.nome);
+  const parcela = 'parcela' in item ? item.parcela : undefined;
+  const alvos: Alvo[] = [];
+  for (const k of Object.keys(estado).filter((k) => compareKeys(k, key) > 0).sort()) {
+    const lista: (Despesa | Renda)[] = kind === 'despesa' ? estado[k]!.despesas : estado[k]!.rendas;
+    for (const x of lista) {
+      if (feito(x)) continue;
+      const p = 'parcela' in x ? x.parcela : undefined;
+      const mesmo = parcela ? p?.grupo === parcela.grupo && p.n > parcela.n : !p && nomeKey(x.nome) === nome;
+      if (mesmo) alvos.push({ key: k, id: x.id });
+    }
+  }
+  return alvos;
+}
+
+/** Copia `patch` (nome, valor, dia…) para os lançamentos de `alvos`. */
+export function aplicar(estado: Estado, alvos: Alvo[], kind: 'despesa' | 'renda', patch: Partial<Despesa> & Partial<Renda>): void {
+  for (const alvo of alvos) {
+    const m = estado[alvo.key];
+    const lista: (Despesa | Renda)[] = !m ? [] : kind === 'despesa' ? m.despesas : m.rendas;
+    const x = lista.find((i) => i.id === alvo.id);
+    if (x) Object.assign(x, patch);
+  }
 }
 
 // ─── Por forma de pagamento ──────────────────────────────────────

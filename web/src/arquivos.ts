@@ -53,7 +53,7 @@ export function exportarCsvMes(mes: Mes, key: string, cdiAnual: number) {
       d.planejado,
       d.pago ? d.realizado : 0,
       d.pago ? 'Paga' : d.agendado ? 'Agendada' : 'A pagar',
-      [d.tipo === 'fixo' ? 'Fixa' : 'Esporádica', d.subtipo ?? '', d.autoReplicar ? 'repete todo mês' : ''].filter(Boolean).join(' · '),
+      [d.tipo === 'fixo' ? 'Fixa' : 'Esporádica', d.subtipo ?? '', d.autoReplicar ? 'repete todo mês' : '', d.parcela ? `parcela ${d.parcela.n}/${d.parcela.de}` : ''].filter(Boolean).join(' · '),
     ]);
   }
   for (const i of mes.investimentos) {

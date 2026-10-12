@@ -52,6 +52,7 @@ function Linha({ linha, compacta }: { linha: LinhaLancamento; compacta?: boolean
 
   const meta = [
     item.data ? `${kind === 'despesa' ? 'Vence' : 'Cai'} dia ${String(diaNoMes(item.data, ui.mes)).padStart(2, '0')}` : null,
+    despesa?.parcela ? `Parcela ${despesa.parcela.n}/${despesa.parcela.de}` : null,
     despesa?.subtipo ? FORMA[despesa.subtipo] : null,
     !compacta && despesa?.tipo === 'esporadico' ? 'Esporádica' : null,
   ].filter(Boolean);
