@@ -1,5 +1,6 @@
 import type { Situacao } from '../model/calc.ts';
 import { categoria } from '../model/categorias.ts';
+import { diaNoMes } from '../model/dates.ts';
 import type { Despesa, Renda } from '../model/types.ts';
 import { Money } from '../prefs.tsx';
 import { type Kind, useActions, useUi } from '../ui.tsx';
@@ -50,7 +51,8 @@ function Linha({ linha, compacta }: { linha: LinhaLancamento; compacta?: boolean
   const valor = feito ? item.realizado : item.planejado;
 
   const meta = [
-    item.data ? `${kind === 'despesa' ? 'Vence' : 'Cai'} dia ${String(item.data).padStart(2, '0')}` : null,
+    item.data ? `${kind === 'despesa' ? 'Vence' : 'Cai'} dia ${String(diaNoMes(item.data, ui.mes)).padStart(2, '0')}` : null,
+    despesa?.parcela ? `Parcela ${despesa.parcela.n}/${despesa.parcela.de}` : null,
     despesa?.subtipo ? FORMA[despesa.subtipo] : null,
     !compacta && despesa?.tipo === 'esporadico' ? 'Esporádica' : null,
   ].filter(Boolean);

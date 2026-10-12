@@ -1,6 +1,8 @@
 import { useId, useMemo, useState } from 'react';
 import { useData } from '../data.tsx';
-import { daysInMonth, monthName } from '../model/dates.ts';
+import { daysInMonth, monthName, shiftKey, shortMonthName } from '../model/dates.ts';
+import { aplicar, MAX_PARCELAS, parcelar, seguintes } from '../model/calc.ts';
+import { plural } from '../format.ts';
 import { CATEGORIAS, categoria as achaCategoria, sugerirCategoria } from '../model/categorias.ts';
 import { CategoriaIcone } from './CategoriaIcone.tsx';
 import { IconChevronDown } from './Icons.tsx';
@@ -26,6 +28,10 @@ interface Form {
   feito: boolean;
   valorFeito: number;
   agendado: boolean;
+  parcelado: boolean;
+  parcelaAtual: string;
+  parcelas: string;
+  aplicarSeguintes: boolean;
 }
 
 export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string; onClose: () => void }) {
@@ -56,12 +62,22 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
       feito: (props.kind === 'despesa' ? d?.pago : r?.recebido) ?? false,
       valorFeito: existente?.realizado || existente?.planejado || 0,
       agendado: d?.agendado ?? false,
+      parcelado: false,
+      parcelaAtual: '1',
+      parcelas: '',
+      aplicarSeguintes: false,
     };
   });
   const [tentou, setTentou] = useState(false);
   const [categoriaManual, setCategoriaManual] = useState(!!form.categoria);
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }));
   const despesa = form.kind === 'despesa';
+  const parcelaExistente = (existente as Despesa | undefined)?.parcela;
+  const parcelado = despesa && !editando && form.parcelado;
+
+  // O mesmo lançamento nos meses seguintes (para "aplicar também nos meses seguintes").
+  const alvos = useMemo(() => (existente ? seguintes(estado, props.mesKey, props.kind, existente) : []), [estado, props.mesKey, props.kind, existente]);
+  const mesesAlvo = [...new Set(alvos.map((a) => a.key))];
 
   // Nomes já usados (para completar) e o último lançamento com cada nome.
   const historico = useMemo(() => {
@@ -100,9 +116,19 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
   const erros = {
     nome: !form.nome.trim() ? 'Dê um nome, por exemplo "Aluguel".' : null,
     valor: form.valor <= 0 ? 'Informe o valor.' : null,
-    dia: diaNum !== null && (!Number.isInteger(diaNum) || diaNum < 1 || diaNum > 31) ? `Use um dia de 1 a ${maxDia}.` : null,
+    dia: diaNum !== null && (!Number.isInteger(diaNum) || diaNum < 1 || diaNum > 31) ? 'Use um dia de 1 a 31.' : null,
   };
-  const valido = !erros.nome && !erros.valor && !erros.dia;
+  const totalParcelas = Number(form.parcelas);
+  const parcelaAtual = Number(form.parcelaAtual);
+  const erroParcelas = !parcelado
+    ? null
+    : !Number.isInteger(totalParcelas) || totalParcelas < 2 || totalParcelas > MAX_PARCELAS
+      ? `Use de 2 a ${MAX_PARCELAS} parcelas.`
+      : !Number.isInteger(parcelaAtual) || parcelaAtual < 1 || parcelaAtual > totalParcelas
+        ? `A parcela deve ser de 1 a ${totalParcelas}.`
+        : null;
+  const ultimoMes = parcelado && !erroParcelas ? shiftKey(props.mesKey, totalParcelas - parcelaAtual) : null;
+  const valido = !erros.nome && !erros.valor && !erros.dia && !erroParcelas;
 
   function salvar() {
     setTentou(true);
@@ -127,15 +153,29 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
         };
         const atual = m.despesas.find((d) => d.id === props.id);
         if (atual) Object.assign(atual, item);
+        else if (parcelado) parcelar(draft, props.mesKey, item, parcelaAtual, totalParcelas);
         else m.despesas.push({ id: uid(), ...item });
+        if (atual && form.aplicarSeguintes) {
+          const { nome, planejado, data, tipo, subtipo, categoria, autoReplicar } = item;
+          aplicar(draft, alvos, 'despesa', atual.parcela ? { nome, planejado, data, subtipo, categoria } : { nome, planejado, data, tipo, subtipo, categoria, autoReplicar });
+        }
       } else {
         const item: Omit<Renda, 'id'> = { ...base, recebido: form.feito, realizado: form.feito ? form.valorFeito || form.valor : 0 };
         const atual = m.rendas.find((r) => r.id === props.id);
         if (atual) Object.assign(atual, item);
         else m.rendas.push({ id: uid(), ...item });
+        if (atual && form.aplicarSeguintes) aplicar(draft, alvos, 'renda', base);
       }
     });
-    toast(editando ? 'Alterações salvas.' : `${despesa ? 'Despesa' : 'Renda'} adicionada em ${monthName(props.mesKey)}.`);
+    toast(
+      editando
+        ? form.aplicarSeguintes && mesesAlvo.length
+          ? `Alterações salvas também ${mesesAlvo.length === 1 ? 'no mês seguinte' : `nos ${mesesAlvo.length} meses seguintes`}.`
+          : 'Alterações salvas.'
+        : parcelado && ultimoMes
+          ? `${plural(totalParcelas - parcelaAtual + 1, 'parcela adicionada', 'parcelas adicionadas')}, até ${monthName(ultimoMes)}.`
+          : `${despesa ? 'Despesa' : 'Renda'} adicionada em ${monthName(props.mesKey)}.`,
+    );
     props.onClose();
   }
 
@@ -144,7 +184,7 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
   return (
     <Modal
       title={titulo}
-      subtitle={monthName(props.mesKey)}
+      subtitle={parcelaExistente ? `${monthName(props.mesKey)} · parcela ${parcelaExistente.n} de ${parcelaExistente.de}` : monthName(props.mesKey)}
       onClose={props.onClose}
       onSubmit={salvar}
       footer={
@@ -207,10 +247,14 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
       </Field>
 
       <div className="campos-linha">
-        <Field label="Valor" error={tentou ? erros.valor : null}>
+        <Field label={parcelado || parcelaExistente ? 'Valor da parcela' : 'Valor'} error={tentou ? erros.valor : null}>
           {(id) => <MoneyInput id={id} value={form.valor} onChange={(valor) => set({ valor, valorFeito: form.feito ? form.valorFeito : valor })} invalid={tentou && !!erros.valor} />}
         </Field>
-        <Field label={despesa ? 'Vence no dia' : 'Cai no dia'} error={erros.dia} hint="Opcional">
+        <Field
+          label={despesa ? 'Vence no dia' : 'Cai no dia'}
+          error={erros.dia}
+          hint={diaNum !== null && diaNum > maxDia && diaNum <= 31 ? `Em ${monthName(props.mesKey).split(' ')[0]?.toLowerCase()}, dia ${maxDia} (último dia)` : 'Opcional'}
+        >
           {(id) => (
             <input
               id={id}
@@ -268,7 +312,49 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
       )}
 
       <div className="interruptores">
-        {(!despesa || form.tipo === 'fixo') && (
+        {despesa && !editando && (
+          <Switch
+            checked={form.parcelado}
+            onChange={(p) => set({ parcelado: p, recorrente: p ? false : form.recorrente })}
+            label="Compra parcelada"
+            hint="Cria uma despesa em cada mês, até a última parcela."
+          />
+        )}
+        {parcelado && (
+          <div className="campos-linha recuo">
+            <Field label="Esta é a parcela" error={tentou ? erroParcelas : null}>
+              {(id) => (
+                <input
+                  id={id}
+                  className="campo"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={MAX_PARCELAS}
+                  value={form.parcelaAtual}
+                  onChange={(e) => set({ parcelaAtual: e.target.value.slice(0, 3) })}
+                />
+              )}
+            </Field>
+            <Field label="De quantas" hint={ultimoMes ? `A última fica em ${monthName(ultimoMes)}.` : 'Ex.: 10'}>
+              {(id) => (
+                <input
+                  id={id}
+                  className="campo"
+                  type="number"
+                  inputMode="numeric"
+                  min={2}
+                  max={MAX_PARCELAS}
+                  placeholder="—"
+                  aria-invalid={(tentou && !!erroParcelas) || undefined}
+                  value={form.parcelas}
+                  onChange={(e) => set({ parcelas: e.target.value.slice(0, 3) })}
+                />
+              )}
+            </Field>
+          </div>
+        )}
+        {(!despesa || form.tipo === 'fixo') && !parcelado && !parcelaExistente && (
           <Switch
             checked={form.recorrente}
             onChange={(recorrente) => set({ recorrente })}
@@ -292,6 +378,22 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
             onChange={(agendado) => set({ agendado })}
             label="Pagamento agendado no banco"
             hint={'O dinheiro já sai do "Na conta", mas a despesa continua aberta até você marcar como paga.'}
+          />
+        )}
+        {editando && mesesAlvo.length > 0 && (
+          <Switch
+            checked={form.aplicarSeguintes}
+            onChange={(aplicarSeguintes) => set({ aplicarSeguintes })}
+            label={
+              parcelaExistente
+                ? alvos.length === 1
+                  ? 'Aplicar também na próxima parcela'
+                  : `Aplicar também nas próximas ${alvos.length} parcelas`
+                : mesesAlvo.length === 1
+                  ? 'Aplicar também no mês seguinte'
+                  : `Aplicar também nos ${mesesAlvo.length} meses seguintes`
+            }
+            hint={`${mesesAlvo.slice(0, 6).map(shortMonthName).join(', ')}${mesesAlvo.length > 6 ? '…' : ''}. Muda nome, valor, dia e categoria; o que já está ${despesa ? 'pago' : 'recebido'} fica como está.`}
           />
         )}
       </div>

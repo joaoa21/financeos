@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { preparar, previsaoPreparo, resumo, situacao, totaisPorForma, valorInvestimento } from './calc.ts';
+import { aplicar, limitesDoMes, parcelar, preparar, previsaoPreparo, resumo, seguintes, situacao, totaisPorForma, usoDosLimites, valorInvestimento } from './calc.ts';
 import { sugerirCategoria, sugerirTipo } from './categorias.ts';
-import { businessDaysBetween, shiftKey } from './dates.ts';
+import { businessDaysBetween, dataReferencia, shiftKey } from './dates.ts';
 import { migrate } from './migrate.ts';
 import { merge3 } from './merge.ts';
 
@@ -101,6 +101,103 @@ describe('situação', () => {
     assert.equal(situacao({ ...base, data: 1 }, '2026-11', now), 'pendente');
     assert.equal(situacao({ ...base, data: 10, agendado: true }, '2026-10', now), 'agendado');
     assert.equal(situacao({ ...base, data: 10, pago: true }, '2026-10', now), 'pago');
+  });
+
+  it('dia 31 num mês de 30 dias vale como o último dia', () => {
+    assert.equal(situacao({ ...base, data: 31 }, '2026-11', new Date(2026, 10, 30)), 'hoje');
+    assert.equal(situacao({ ...base, data: 31 }, '2026-02', new Date(2026, 1, 28)), 'hoje');
+  });
+});
+
+describe('compras parceladas', () => {
+  const item = { nome: 'Notebook', planejado: 400, realizado: 400, pago: true, tipo: 'fixo' as const, subtipo: 'cartao' as const, data: 10, autoReplicar: true, agendado: false, categoria: 'compras' };
+
+  it('cria uma parcela por mês, só a primeira herda "paga", e nenhuma se repete', () => {
+    const estado = migrate({ '2026-10': { saldoInicial: 0, despesas: [], rendas: [], investimentos: [] } });
+    const ultimo = parcelar(estado, '2026-10', item, 3, 5);
+    assert.equal(ultimo, '2026-12');
+    const [a, b, c] = ['2026-10', '2026-11', '2026-12'].map((k) => estado[k]!.despesas[0]!);
+    assert.deepEqual([a!.parcela!.n, b!.parcela!.n, c!.parcela!.n], [3, 4, 5]);
+    assert.equal(a!.parcela!.grupo, c!.parcela!.grupo);
+    assert.equal(a!.pago, true);
+    assert.equal(b!.pago, false);
+    assert.equal(b!.realizado, 0);
+    assert.ok([a, b, c].every((d) => !d!.autoReplicar && d!.parcela!.de === 5));
+    // A migração mantém a parcela (e descarta uma inválida).
+    assert.deepEqual(migrate(estado)['2026-11']!.despesas[0]!.parcela, b!.parcela);
+    assert.equal(migrate({ '2026-10': { despesas: [{ nome: 'x', parcela: { n: 5, de: 3, grupo: 'g' } }] } })['2026-10']!.despesas[0]!.parcela, undefined);
+  });
+
+  it('preparar o mês seguinte não copia parcelas', () => {
+    const estado = migrate({ '2026-10': { saldoInicial: 0, despesas: [], rendas: [], investimentos: [] } });
+    parcelar(estado, '2026-10', item, 1, 2);
+    const p = previsaoPreparo(estado, '2026-11', '2026-12', 15);
+    assert.equal(p.despesasRecorrentes.length + p.outrasFixas.length, 0);
+  });
+
+  it('acha as próximas parcelas da mesma compra, ou o mesmo nome nos meses seguintes, sem mexer no que já foi pago', () => {
+    const estado = migrate({
+      '2026-10': { despesas: [{ id: 'l10', nome: 'Luz', planejado: 100, tipo: 'fixo', autoReplicar: true }] },
+      '2026-11': { despesas: [{ id: 'l11', nome: 'luz ', planejado: 100, tipo: 'fixo' }] },
+      '2026-12': { despesas: [{ id: 'l12', nome: 'Luz', planejado: 100, realizado: 100, pago: true, tipo: 'fixo' }] },
+    });
+    parcelar(estado, '2026-10', { ...item, nome: 'Luz', pago: false, realizado: 0 }, 1, 3);
+    const luz = estado['2026-10']!.despesas[0]!;
+    const alvos = seguintes(estado, '2026-10', 'despesa', luz);
+    assert.deepEqual(alvos, [{ key: '2026-11', id: 'l11' }], 'só a não paga e sem confundir com a parcela de mesmo nome');
+    const parcela1 = estado['2026-10']!.despesas[1]!;
+    assert.equal(seguintes(estado, '2026-10', 'despesa', parcela1).length, 2);
+    aplicar(estado, alvos, 'despesa', { planejado: 130 });
+    assert.equal(estado['2026-11']!.despesas[0]!.planejado, 130);
+    assert.equal(estado['2026-12']!.despesas[0]!.planejado, 100);
+  });
+});
+
+describe('limites por categoria', () => {
+  const estado = migrate({
+    '2026-08': { orcamentos: { mercado: 800 } },
+    '2026-09': { despesas: [{ nome: 'Mercado', planejado: 300 }] },
+    '2026-10': {
+      orcamentos: { mercado: 1000, alimentacao: 200, xx9: 5, lazer: -1 },
+      despesas: [
+        { nome: 'Supermercado', planejado: 900 },
+        { nome: 'iFood', planejado: 250 },
+      ],
+    },
+  });
+
+  it('valem do mês em diante; mês sem limites usa os do anterior mais recente', () => {
+    assert.deepEqual(limitesDoMes(estado, '2026-10'), { limites: { mercado: 1000, alimentacao: 200 }, de: '2026-10' }, 'descarta categoria inválida e valor ≤ 0');
+    assert.equal(limitesDoMes(estado, '2026-09').de, '2026-08');
+    assert.equal(limitesDoMes(estado, '2027-01').de, '2026-10');
+    assert.equal(limitesDoMes(estado, '2026-07').de, null);
+  });
+
+  it('mostra primeiro o que estourou', () => {
+    const uso = usoDosLimites(estado['2026-10']!, limitesDoMes(estado, '2026-10').limites);
+    assert.deepEqual(uso.map((u) => [u.id, u.gasto]), [['alimentacao', 250], ['mercado', 900]]);
+  });
+
+  it('um mês só com limites não some e a mescla entre aparelhos mantém os limites', () => {
+    assert.ok(migrate(estado)['2026-08']);
+    const base = migrate(estado);
+    const local = structuredClone(base);
+    local['2026-10']!.orcamentos = { mercado: 1200 };
+    const remoto = structuredClone(base);
+    remoto['2026-10']!.saldoInicial = 50;
+    const { estado: junto } = merge3(base, local, remoto);
+    assert.deepEqual(junto['2026-10']!.orcamentos, { mercado: 1200 });
+    assert.equal(junto['2026-10']!.saldoInicial, 50);
+  });
+});
+
+describe('data de referência do mês', () => {
+  const now = new Date(2026, 9, 11);
+  it('mês passado usa o último dia dele; atual e futuros, hoje', () => {
+    assert.equal(dataReferencia('2026-09', now), '2026-09-30');
+    assert.equal(dataReferencia('2026-02', now), '2026-02-28');
+    assert.equal(dataReferencia('2026-10', now), '2026-10-11');
+    assert.equal(dataReferencia('2026-12', now), '2026-10-11');
   });
 });
 

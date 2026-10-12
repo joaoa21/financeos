@@ -52,8 +52,10 @@ export async function loadState(token: Token): Promise<Snapshot> {
   return { data: body.data ?? {}, version: Number(body.version) || 0 };
 }
 
-export async function saveState(token: Token, data: unknown, version: number): Promise<number> {
-  const response = await request('/api/state', token, { method: 'PUT', body: JSON.stringify({ data, version }) });
+/** `checkpoint`: pede ao servidor que guarde a versão atual no histórico antes de trocar. */
+export async function saveState(token: Token, data: unknown, version: number, checkpoint = false): Promise<number> {
+  const body = checkpoint ? { data, version, checkpoint } : { data, version };
+  const response = await request('/api/state', token, { method: 'PUT', body: JSON.stringify(body) });
   if (response.status === 409) {
     const body = (await response.json()) as Snapshot;
     throw new ConflictError({ data: body.data ?? {}, version: Number(body.version) || 0 });
@@ -65,4 +67,23 @@ export async function saveState(token: Token, data: unknown, version: number): P
 export async function deleteState(token: Token): Promise<void> {
   const response = await request('/api/state', token, { method: 'DELETE' });
   if (!response.ok) throw new Error(await errorMessage(response));
+}
+
+/** Uma versão anterior guardada no servidor (últimos 30 dias). */
+export interface Versao {
+  id: number;
+  savedAt: string;
+  months: number;
+}
+
+export async function listHistory(token: Token): Promise<Versao[]> {
+  const response = await request('/api/history', token);
+  if (!response.ok) throw new Error(await errorMessage(response));
+  return ((await response.json()) as { versions: Versao[] }).versions;
+}
+
+export async function loadHistory(token: Token, id: number): Promise<unknown> {
+  const response = await request(`/api/history/${id}`, token);
+  if (!response.ok) throw new Error(await errorMessage(response));
+  return ((await response.json()) as { data: unknown }).data;
 }

@@ -40,6 +40,11 @@ await migrate(pool);
 const store = pgStore(pool);
 const app = createApp({ store, verify, origins, trustProxy: production });
 
+// Versões com mais de 30 dias saem do histórico (ao ligar e a cada 6 horas).
+const prune = () => store.prune().catch((err) => console.error('Limpeza do histórico falhou:', err.message));
+void prune();
+setInterval(prune, 6 * 60 * 60 * 1000).unref();
+
 const sweep = authikServerConfigFromEnv();
 if (sweep) startDeletedAccountsSweep(store, sweep);
 

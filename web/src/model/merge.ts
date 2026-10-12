@@ -46,6 +46,8 @@ function mergeMonth(b: Mes, l: Mes, r: Mes, pick: <T>(b: T | undefined, l: T | u
     investimentos: [],
   };
   if (pick(b.fechado, l.fechado, r.fechado)) out.fechado = true;
+  const orcamentos = pick(b.orcamentos, l.orcamentos, r.orcamentos);
+  if (orcamentos) out.orcamentos = orcamentos;
   for (const list of LISTS) {
     (out[list] as Item[]) = mergeList(b[list] as Item[], l[list] as Item[], r[list] as Item[], pick);
   }

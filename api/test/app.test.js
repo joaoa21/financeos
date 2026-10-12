@@ -108,6 +108,52 @@ describe('salvar', () => {
   });
 });
 
+describe('versões anteriores', () => {
+  it('guarda a versão anterior no máximo a cada 6 horas, ou sempre que o site pede', async () => {
+    let agora = Date.parse('2026-10-11T10:00:00Z');
+    const memory = memoryStore({ now: () => agora });
+    await memory.save('u', { '2026-10': month }, 0);
+    await memory.save('u', { '2026-10': { ...month, saldoInicial: 1 } }, 1);
+    await memory.save('u', { '2026-10': { ...month, saldoInicial: 2 } }, 2);
+    assert.equal((await memory.history('u')).length, 1, 'só a primeira troca da sessão');
+    await memory.save('u', {}, 3, true);
+    assert.equal((await memory.history('u')).length, 2, 'ponto de restauração pedido pelo site');
+    agora += 7 * 60 * 60 * 1000;
+    await memory.save('u', { '2026-10': month }, 4);
+    assert.equal((await memory.history('u')).length, 2, 'versão vazia não vai para o histórico');
+    await memory.save('u', { '2026-11': month }, 5);
+    assert.equal((await memory.history('u')).length, 3, 'primeira troca com dados depois de 6 horas');
+    agora += 31 * 24 * 60 * 60 * 1000;
+    assert.equal((await memory.history('u')).length, 0, 'some depois de 30 dias');
+    assert.equal(await memory.prune(), 3);
+  });
+
+  it('lista e devolve as versões só da própria conta; apagar tudo deixa uma cópia', async () => {
+    const token = await sign('historico');
+    await call('/api/state', { token, method: 'PUT', body: { data: { '2026-10': month }, version: 0 } });
+    await call('/api/state', { token, method: 'DELETE' });
+    const lista = await call('/api/history', { token });
+    assert.equal(lista.status, 200);
+    assert.equal(lista.body.versions.length, 1);
+    assert.equal(lista.body.versions[0].months, 1);
+    const id = lista.body.versions[0].id;
+    const item = await call(`/api/history/${id}`, { token });
+    assert.deepEqual(item.body.data, { '2026-10': month });
+    assert.equal((await call(`/api/history/${id}`, { token: await sign('intruso') })).status, 404);
+    assert.equal((await call('/api/history/abc', { token })).status, 404);
+    assert.equal((await call('/api/state', { token, method: 'PUT', body: { data: {}, version: 0, checkpoint: 'sim' } })).status, 400);
+  });
+
+  it('conta excluída no Authik perde também o histórico', async () => {
+    const memory = memoryStore();
+    await memory.save('x', { '2026-10': month }, 0);
+    await memory.remove('x');
+    assert.equal((await memory.history('x')).length, 1);
+    assert.equal(await memory.purge('x'), true);
+    assert.equal((await memory.history('x')).length, 0);
+  });
+});
+
 describe('navegador', () => {
   it('só o site do FinanceOS passa pelo CORS', async () => {
     const ok = await call('/api/state', { token: await sign('x'), origin: SITE });

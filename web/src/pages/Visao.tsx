@@ -7,8 +7,10 @@ import { PorForma } from '../components/PorForma.tsx';
 import { IconeDestaque } from '../components/CategoriaIcone.tsx';
 import { useData } from '../data.tsx';
 import { pct, plural, tom } from '../format.ts';
-import { gastosPorCategoria, mesAnteriorComDados, resumo, situacao, valorDespesa, valorRenda } from '../model/calc.ts';
-import { compareKeys, currentKey, monthName, shiftKey, shortMonthName } from '../model/dates.ts';
+import { gastosPorCategoria, limitesDoMes, mesAnteriorComDados, resumo, situacao, usoDosLimites, valorDespesa, valorRenda } from '../model/calc.ts';
+import { categoria } from '../model/categorias.ts';
+import { CategoriaIcone } from '../components/CategoriaIcone.tsx';
+import { compareKeys, currentKey, dataReferencia, daysInMonth, monthName, shiftKey, shortMonthName } from '../model/dates.ts';
 import { Money } from '../prefs.tsx';
 import { useMes, useUi } from '../ui.tsx';
 
@@ -16,7 +18,7 @@ export function Visao() {
   const { estado, legado, importarLegado, descartarLegado } = useData();
   const ui = useUi();
   const { mes, key, existe } = useMes();
-  const r = resumo(mes, ui.cdi.anual);
+  const r = resumo(mes, ui.cdi.anual, dataReferencia(key));
   const hoje = currentKey();
   const ehAtual = key === hoje;
   const passado = compareKeys(key, hoje) < 0;
@@ -43,6 +45,7 @@ export function Visao() {
           renda: m ? m.rendas.reduce((s, x) => s + valorRenda(x), 0) : 0,
           despesa: m ? m.despesas.reduce((s, x) => s + valorDespesa(x), 0) : 0,
           atual: k === key,
+          vazio: !m,
         };
       }),
     [estado, key],
@@ -51,12 +54,30 @@ export function Visao() {
   const categorias = gastosPorCategoria(mes);
   const atrasados = pendentes.filter((l) => l.situacao === 'atrasado');
   const semCategoria = mes.despesas.filter((d) => !d.categoria).length;
+  const limites = usoDosLimites(mes, limitesDoMes(estado, key).limites);
+  // Mês que nasceu só com parcelas de compras: ainda falta trazer renda, saldo e contas fixas.
+  const anterior = mesAnteriorComDados(estado, key);
+  const soParcelas = !!anterior && !mes.rendas.length && !mes.saldoInicial && mes.despesas.length > 0 && mes.despesas.every((d) => d.parcela);
 
   if (!existe) return <MesVazio />;
 
   return (
     <div className="pagina">
       {legado && <AvisoLegado meses={legado.meses} onImportar={importarLegado} onDescartar={descartarLegado} />}
+
+      {soParcelas && anterior && (
+        <section className="cartao aviso-legado" aria-labelledby="t-preparar">
+          <div>
+            <h2 id="t-preparar">{monthName(key).split(' ')[0]} ainda não foi preparado</h2>
+            <p>Por enquanto só tem parcelas de compras. Traga de {monthName(anterior)} a renda, o saldo e as contas que se repetem.</p>
+          </div>
+          <div className="aviso-legado__acoes">
+            <button type="button" className="btn" onClick={() => ui.prepararMes(key)}>
+              Trazer de {monthName(anterior).split(' ')[0]}
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="destaques" aria-label="Resumo do mês">
         <article className="cartao destaque destaque--principal">
@@ -238,7 +259,57 @@ export function Visao() {
         </section>
       </div>
 
-      {(ehAtual || passado) && !mes.fechado && (
+      {/* Fechar o mês: só nos últimos dias dele (ou se já passou). */}
+      {/* Limites por categoria: fora da grade, ocupa a largura toda quando existe. */}
+      <section className="cartao bloco" aria-labelledby="t-limites">
+        <header className="bloco__topo">
+          <h2 id="t-limites">Limites por categoria</h2>
+          <button type="button" className="link" onClick={ui.editarLimites}>
+            {limites.length ? 'Editar' : 'Definir limites'}
+          </button>
+        </header>
+        {limites.length ? (
+          <ul className="categorias limites">
+            {limites.map((l) => {
+              const nivel = l.uso > 1.0001 ? 'estourou' : l.uso >= 0.85 ? 'perto' : 'ok';
+              return (
+                <li key={l.id} className={`limites--${nivel}`}>
+                  <span className="categorias__icone">
+                    <CategoriaIcone id={l.id} tamanho={30} />
+                  </span>
+                  <span className="categorias__nome">{categoria(l.id).nome}</span>
+                  <span className="categorias__valor">
+                    <Money value={l.gasto} />
+                    <span className="categorias__pct">
+                      de <Money value={l.limite} />
+                    </span>
+                  </span>
+                  <span className="categorias__trilho" aria-hidden="true">
+                    <span style={{ width: `${Math.min(100, l.uso * 100)}%` }} />
+                  </span>
+                  <span className="limites__nota">
+                    {nivel === 'estourou' ? (
+                      <>
+                        <Money value={l.gasto - l.limite} /> acima do limite
+                      </>
+                    ) : (
+                      <>
+                        Sobram <Money value={l.limite - l.gasto} />
+                      </>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="vazio">
+            <p>Defina quanto quer gastar por mês em cada categoria (mercado, restaurantes…) e acompanhe aqui.</p>
+          </div>
+        )}
+      </section>
+
+      {(passado || (ehAtual && new Date().getDate() >= daysInMonth(key) - 4)) && !mes.fechado && (
         <section className="cartao fechar-mes">
           <div>
             <h2>

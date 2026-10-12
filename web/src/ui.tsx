@@ -22,6 +22,7 @@ export interface Ui {
   editarLancamento: (kind: Kind, id: string) => void;
   prepararMes: (destino: string, fechar?: boolean) => void;
   editarSaldo: () => void;
+  editarLimites: () => void;
   novoInvestimento: () => void;
   editarInvestimento: (id: string) => void;
   novoAporte: (invId: string) => void;
@@ -151,10 +152,13 @@ export function useActions() {
 
     limparMes() {
       let antes: Mes | undefined;
-      update((draft) => {
-        antes = draft[key];
-        delete draft[key];
-      });
+      update(
+        (draft) => {
+          antes = draft[key];
+          delete draft[key];
+        },
+        { checkpoint: true },
+      );
       if (!antes) return;
       const mes = antes;
       toast(`${monthName(key)} foi limpo.`, {

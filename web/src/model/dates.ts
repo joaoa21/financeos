@@ -45,6 +45,24 @@ export function daysInMonth(key: string): number {
   return new Date(year, month + 1, 0).getDate();
 }
 
+/** Dia de vencimento dentro do mês: "dia 31" em novembro vira 30 (o último dia). */
+export function diaNoMes(dia: number, key: string): number {
+  return Math.min(dia, daysInMonth(key));
+}
+
+/** Último dia do mês, como "AAAA-MM-DD". */
+export function ultimoDiaISO(key: string): string {
+  return `${key}-${String(daysInMonth(key)).padStart(2, '0')}`;
+}
+
+/**
+ * Data em que os valores do mês são calculados: hoje, ou o último dia do mês se ele já
+ * passou (um mês antigo mostra os investimentos como estavam no fim dele).
+ */
+export function dataReferencia(key: string, now = new Date()): string {
+  return compareKeys(key, currentKey(now)) < 0 ? ultimoDiaISO(key) : todayISO(now);
+}
+
 /** Comparação de meses: negativo se `a` vem antes de `b`. */
 export function compareKeys(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;

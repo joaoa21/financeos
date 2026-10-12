@@ -13,6 +13,8 @@ export interface PontoFluxo {
   renda: number;
   despesa: number;
   atual?: boolean;
+  /** Mês sem nenhum dado registrado (diferente de um mês com R$ 0). */
+  vazio?: boolean;
 }
 
 /** Topo do eixo com 4 divisões redondas (ex.: 12 mil → 3, 6, 9, 12 mil). */
@@ -66,9 +68,15 @@ export function FluxoChart({ pontos, altura = 220, onSelect }: { pontos: PontoFl
             return (
               <g key={p.key} className={hover === i ? 'grafico__grupo grafico__grupo--ativo' : 'grafico__grupo'}>
                 <rect x={esquerda + grupo * i} y={topo} width={grupo} height={area} className="grafico__alvo" onMouseEnter={() => setHover(i)} onClick={() => onSelect?.(p.key)} />
-                <path d={bar(cx - barra - 1, y(0), barra, hR)} className="serie-renda" />
-                <path d={bar(cx + 1, y(0), barra, hD)} className="serie-despesa" />
-                <text x={cx} y={altura - 8} textAnchor="middle" className={`grafico__eixo${p.atual ? ' grafico__eixo--atual' : ''}`}>
+                {p.vazio ? (
+                  <line x1={cx - barra} x2={cx + barra} y1={y(0) - 1} y2={y(0) - 1} className="grafico__vazio" />
+                ) : (
+                  <>
+                    <path d={bar(cx - barra - 1, y(0), barra, hR)} className="serie-renda" />
+                    <path d={bar(cx + 1, y(0), barra, hD)} className="serie-despesa" />
+                  </>
+                )}
+                <text x={cx} y={altura - 8} textAnchor="middle" className={`grafico__eixo${p.atual ? ' grafico__eixo--atual' : ''}${p.vazio ? ' grafico__eixo--vazio' : ''}`}>
                   {p.label}
                 </text>
               </g>
@@ -78,9 +86,15 @@ export function FluxoChart({ pontos, altura = 220, onSelect }: { pontos: PontoFl
         {atual && hover !== null && (
           <div className="grafico__dica" style={{ left: `${((esquerda + grupo * hover + grupo / 2) / largura) * 100}%` }}>
             <strong>{atual.label}</strong>
-            <span><i className="serie-renda" /> Renda <Money value={atual.renda} /></span>
-            <span><i className="serie-despesa" /> Despesas <Money value={atual.despesa} /></span>
-            <span className="grafico__dica-saldo">Saldo <Money value={atual.renda - atual.despesa} sinal /></span>
+            {atual.vazio ? (
+              <span>Sem dados neste mês</span>
+            ) : (
+              <>
+                <span><i className="serie-renda" /> Renda <Money value={atual.renda} /></span>
+                <span><i className="serie-despesa" /> Despesas <Money value={atual.despesa} /></span>
+                <span className="grafico__dica-saldo">Saldo <Money value={atual.renda - atual.despesa} sinal /></span>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -22,6 +22,14 @@ export interface Despesa {
   /** Pagamento já agendado no banco: o dinheiro está comprometido. */
   agendado: boolean;
   categoria?: string | null;
+  /** Compra parcelada: esta é a parcela `n` de `de`; `grupo` liga as parcelas da mesma compra. */
+  parcela?: Parcela;
+}
+
+export interface Parcela {
+  n: number;
+  de: number;
+  grupo: string;
 }
 
 export interface Renda {
@@ -64,6 +72,11 @@ export interface Mes {
   investimentos: Investimento[];
   /** O mês foi fechado (o seguinte já foi preparado). */
   fechado?: boolean;
+  /**
+   * Limite de gasto por categoria (id da categoria → R$). Vale deste mês em diante:
+   * um mês sem limites próprios usa os do mês anterior mais recente que tenha.
+   */
+  orcamentos?: Record<string, number>;
 }
 
 export type Estado = Record<string, Mes>;

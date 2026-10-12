@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { ConflictError, deleteState, loadState, OfflineError, saveState, type Token, UnauthorizedError } from './api.ts';
+import { ConflictError, deleteState, listHistory, loadHistory, loadState, OfflineError, saveState, type Token, UnauthorizedError, type Versao } from './api.ts';
 import { merge3 } from './model/merge.ts';
 import { isEmptyMonth, migrate } from './model/migrate.ts';
 import type { Estado } from './model/types.ts';
@@ -16,15 +16,24 @@ interface DataContextValue {
   estado: Estado;
   sync: SyncStatus;
   /** Altera os dados. `recipe` recebe uma cópia e pode mudá-la à vontade. Devolve o estado anterior (para desfazer). */
-  update: (recipe: (draft: Estado) => void) => Estado;
+  update: (recipe: (draft: Estado) => void, opcoes?: Opcoes) => Estado;
   /** Troca tudo de uma vez (desfazer, importar). */
-  replace: (estado: Estado) => void;
+  replace: (estado: Estado, opcoes?: Opcoes) => void;
+  /** Versões anteriores guardadas no servidor (últimos 30 dias). */
+  versoes: () => Promise<Versao[]>;
+  /** Volta para uma versão anterior. Devolve o estado de antes (para desfazer). */
+  restaurar: (id: number) => Promise<Estado>;
   /** Apaga todos os dados da conta no servidor. */
   wipe: () => Promise<void>;
   /** Dados da versão antiga guardados neste navegador (só quando a conta ainda está vazia). */
   legado: { meses: number } | null;
   importarLegado: () => void;
   descartarLegado: () => void;
+}
+
+/** `checkpoint`: mudança grande; o servidor guarda no histórico a versão de antes. */
+export interface Opcoes {
+  checkpoint?: boolean;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -61,6 +70,7 @@ export function DataProvider(props: {
   const base = useRef<Estado>({});
   const version = useRef(0);
   const dirty = useRef(false);
+  const checkpoint = useRef(false);
   const saving = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const failures = useRef(0);
@@ -79,8 +89,10 @@ export function DataProvider(props: {
     saving.current = true;
     setSync('salvando');
     const snapshot = current.current;
+    const ponto = checkpoint.current;
     try {
-      version.current = await saveState(token, snapshot, version.current);
+      version.current = await saveState(token, snapshot, version.current, ponto);
+      if (ponto) checkpoint.current = false;
       base.current = snapshot;
       failures.current = 0;
       if (current.current === snapshot) {
@@ -119,8 +131,9 @@ export function DataProvider(props: {
     if (dirty.current && current.current !== snapshot && failures.current === 0) timer.current = setTimeout(() => void flush(), 300);
   }, [token, apply]);
 
-  const schedule = useCallback(() => {
+  const schedule = useCallback((opcoes?: Opcoes) => {
     dirty.current = true;
+    if (opcoes?.checkpoint) checkpoint.current = true;
     setSync('salvando');
     clearTimeout(timer.current);
     timer.current = setTimeout(() => void flush(), 700);
@@ -195,21 +208,21 @@ export function DataProvider(props: {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const update = useCallback(
-    (recipe: (draft: Estado) => void) => {
+    (recipe: (draft: Estado) => void, opcoes?: Opcoes) => {
       const previous = current.current;
       const draft = structuredClone(previous);
       recipe(draft);
       apply(prune(draft));
-      schedule();
+      schedule(opcoes);
       return previous;
     },
     [apply, schedule],
   );
 
   const replace = useCallback(
-    (next: Estado) => {
+    (next: Estado, opcoes?: Opcoes) => {
       apply(prune(structuredClone(next)));
-      schedule();
+      schedule(opcoes);
     },
     [apply, schedule],
   );
@@ -224,6 +237,18 @@ export function DataProvider(props: {
     setSync('salvo');
   }, [token, apply]);
 
+  const versoes = useCallback(() => listHistory(token), [token]);
+
+  const restaurar = useCallback(
+    async (id: number) => {
+      const data = migrate(await loadHistory(token, id));
+      const antes = current.current;
+      replace(data, { checkpoint: true });
+      return antes;
+    },
+    [token, replace],
+  );
+
   const importarLegado = useCallback(() => {
     const antigo = legacyData();
     if (antigo) replace(migrate(antigo));
@@ -237,8 +262,8 @@ export function DataProvider(props: {
   }, []);
 
   const value = useMemo(
-    () => ({ estado, sync, update, replace, wipe, legado, importarLegado, descartarLegado }),
-    [estado, sync, update, replace, wipe, legado, importarLegado, descartarLegado],
+    () => ({ estado, sync, update, replace, versoes, restaurar, wipe, legado, importarLegado, descartarLegado }),
+    [estado, sync, update, replace, versoes, restaurar, wipe, legado, importarLegado, descartarLegado],
   );
 
   return <DataContext.Provider value={value}>{props.children(load, () => setAttempt((n) => n + 1))}</DataContext.Provider>;

@@ -1,6 +1,6 @@
 import { valorInvestimento } from './model/calc.ts';
 import { categoria } from './model/categorias.ts';
-import { todayISO } from './model/dates.ts';
+import { dataReferencia, todayISO } from './model/dates.ts';
 import { migrate } from './model/migrate.ts';
 import type { Estado, Mes } from './model/types.ts';
 
@@ -53,12 +53,12 @@ export function exportarCsvMes(mes: Mes, key: string, cdiAnual: number) {
       d.planejado,
       d.pago ? d.realizado : 0,
       d.pago ? 'Paga' : d.agendado ? 'Agendada' : 'A pagar',
-      [d.tipo === 'fixo' ? 'Fixa' : 'Esporádica', d.subtipo ?? '', d.autoReplicar ? 'repete todo mês' : ''].filter(Boolean).join(' · '),
+      [d.tipo === 'fixo' ? 'Fixa' : 'Esporádica', d.subtipo ?? '', d.autoReplicar ? 'repete todo mês' : '', d.parcela ? `parcela ${d.parcela.n}/${d.parcela.de}` : ''].filter(Boolean).join(' · '),
     ]);
   }
   for (const i of mes.investimentos) {
-    const v = valorInvestimento(i, cdiAnual);
-    linhas.push(['Investimento', i.nome, i.tipo, '', v.investido, v.atual, 'Valor estimado hoje', i.percentualCDI ? `${i.percentualCDI}% do CDI` : '']);
+    const v = valorInvestimento(i, cdiAnual, dataReferencia(key));
+    linhas.push(['Investimento', i.nome, i.tipo, '', v.investido, v.atual, `Valor estimado em ${dataReferencia(key).split('-').reverse().join('/')}`, i.percentualCDI ? `${i.percentualCDI}% do CDI` : '']);
   }
   linhas.push([], ['Saldo inicial', '', '', '', mes.saldoInicial, '', '', '']);
   const csv = linhas.map((l) => l.map(celula).join(';')).join('\r\n');

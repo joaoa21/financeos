@@ -1,6 +1,6 @@
 import { sugerirCategoria } from './categorias.ts';
 import { isMonthKey, todayISO } from './dates.ts';
-import type { Aporte, Despesa, Estado, Forma, Investimento, Mes, Renda } from './types.ts';
+import type { Aporte, Despesa, Estado, Forma, Investimento, Mes, Parcela, Renda } from './types.ts';
 
 // Converte os dados de qualquer versão do FinanceOS para o formato atual.
 // Roda ao carregar da API e ao importar um arquivo: nunca confia no que chegou.
@@ -32,6 +32,16 @@ function day(v: unknown): number | null {
   return Number.isInteger(n) && n >= 1 && n <= 31 ? n : null;
 }
 
+/** Parcela válida (1 ≤ n ≤ de ≤ 120, com grupo) ou nada. */
+function parcela(v: unknown): Parcela | undefined {
+  const p = obj(v);
+  const n = num(p.n, NaN);
+  const de = num(p.de, NaN);
+  if (!Number.isInteger(n) || !Number.isInteger(de) || n < 1 || de < 2 || n > de || de > 120) return undefined;
+  if (typeof p.grupo !== 'string' || !/^[\w-]{1,64}$/.test(p.grupo)) return undefined;
+  return { n, de, grupo: p.grupo };
+}
+
 function despesa(raw: Loose): Despesa {
   let tipo = raw.tipo === 'esporadico' ? 'esporadico' : 'fixo';
   let subtipo: Forma | null = raw.subtipo === 'cartao' || raw.subtipo === 'boleto' || raw.subtipo === 'pix' ? raw.subtipo : null;
@@ -43,7 +53,8 @@ function despesa(raw: Loose): Despesa {
   const planejado = Math.max(0, num(raw.planejado));
   const realizado = Math.max(0, num(raw.realizado));
   const pago = typeof raw.pago === 'boolean' ? raw.pago : realizado > 0;
-  return {
+  const p = parcela(raw.parcela);
+  const d: Despesa = {
     id: id(raw.id),
     nome: str(raw.nome) || 'Sem nome',
     planejado,
@@ -57,6 +68,11 @@ function despesa(raw: Loose): Despesa {
     // Sem o campo (dados da versão antiga): sugere pelo nome. null = a pessoa escolheu "sem categoria".
     categoria: typeof raw.categoria === 'string' && raw.categoria ? str(raw.categoria, 40) : raw.categoria === undefined ? sugerirCategoria(str(raw.nome)) : null,
   };
+  if (p) {
+    d.parcela = p;
+    d.autoReplicar = false;
+  }
+  return d;
 }
 
 function renda(raw: Loose): Renda {
@@ -122,6 +138,12 @@ function mes(raw: Loose): Mes {
     investimentos: list(raw.investimentos).map(investimento),
   };
   if (raw.fechado === true) m.fechado = true;
+  if (raw.orcamentos !== undefined) {
+    m.orcamentos = {};
+    for (const [cat, valor] of Object.entries(obj(raw.orcamentos)).slice(0, 50)) {
+      if (/^[a-z]{1,40}$/.test(cat) && num(valor) > 0) m.orcamentos[cat] = num(valor);
+    }
+  }
   return m;
 }
 
@@ -136,5 +158,5 @@ export function migrate(raw: unknown): Estado {
 
 /** Um mês sem nada (e sem saldo) não precisa ser guardado. */
 export function isEmptyMonth(m: Mes | undefined): boolean {
-  return !m || (!m.saldoInicial && !m.despesas.length && !m.rendas.length && !m.investimentos.length && !m.fechado);
+  return !m || (!m.saldoInicial && !m.despesas.length && !m.rendas.length && !m.investimentos.length && !m.fechado && m.orcamentos === undefined);
 }

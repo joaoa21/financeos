@@ -63,3 +63,4 @@ export const IconCircle = icon(<circle cx="12" cy="12" r="8.5" />);
 export const IconPiggy = icon(<><path d="M19 9.5c.9.3 2 1.4 2 2.5M5 11a7 7 0 0 1 7-5h2a6 6 0 0 1 6 6v1a3 3 0 0 1-2 2.8V19h-3v-2h-4v2H8v-2.5A6.5 6.5 0 0 1 5 11Z" /><path d="M2 9c0 1.5 1 2.5 3 2.5M15.5 10h.01" /></>);
 export const IconFlag = icon(<><path d="M4 22V4a1 1 0 0 1 1-1h12l-2 4 2 4H5" /></>);
 export const IconSparkle = icon(<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2" />);
+export const IconHistory = icon(<><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5M12 7v5l4 2" /></>);

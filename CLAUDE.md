@@ -17,9 +17,12 @@ App de finanças pessoais do dono (João Alberto, designer, pouco de backend; Wi
 - Navegar entre meses **não cria nem copia nada**. Mês novo só nasce com um lançamento ou pelo "Preparar/Fechar mês".
 - Aportes: `origem` (`conta`/`externo`) + `status` (`feito`/`previsto`). Sobra prevista desconta aportes da conta; "Na conta" só os feitos.
 - Cores das séries dos gráficos validadas para daltonismo (renda `#1BAF7A`, despesas `#EB6834`); a tabela em Relatórios é a alternativa acessível.
+- **Versões anteriores** (`user_state_history`, 30 dias): a API copia a versão de antes no máximo a cada 6 h e sempre que o site manda `checkpoint: true` (importar, limpar mês, restaurar) ou em "Apagar tudo". Conta excluída no Authik apaga também o histórico (`store.purge`).
+- **Parcelas**: `Despesa.parcela = { n, de, grupo }`, uma despesa por mês criada de uma vez (é a exceção ao "mês só nasce com lançamento": a parcela é o lançamento). Parcelas não entram no Preparar mês.
+- **Limites por categoria**: `Mes.orcamentos` (categoria → R$). Mês sem limites próprios herda os do anterior mais recente que tenha (`limitesDoMes`); `{}` = sem limites dali em diante.
 
-## Estado (09/10/2026)
+## Estado (11/10/2026)
 
-Versão 2 feita na branch `claude/v2-authik`: reescrita do site, API movida para cá (antes `../financeos-api`), login trocado do Clerk para o Authik. Validado com prévia local (API real com banco em memória e login simulado). **Falta publicar** seguindo o README: site em `finance.joaoa.com.br` e login em `auth.finance.joaoa.com.br` (subdomínios do site pessoal, decisão do dono em 09/10/2026; sem domínio próprio) e mover os dados do ID do Clerk para o ID do Authik (`npm run contas -- mover`).
+No ar desde 09/10/2026: site em `finance.joaoa.com.br` (Netlify), login em `auth.finance.joaoa.com.br` (Authik), API no Railway. O dono começou do zero (sem migrar dados do Clerk). Instalável como app (manifesto + ícones PNG em `web/public`).
 
 Como trabalhar: branch nova, PR, merge só com autorização do dono.
