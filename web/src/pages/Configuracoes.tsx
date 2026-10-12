@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { Versao } from '../api.ts';
 import { exportarCsvMes, exportarJson, lerJson } from '../arquivos.ts';
 import { Segmented, Switch } from '../components/Form.tsx';
-import { IconDownload, IconLogout, IconTrash, IconUpload } from '../components/Icons.tsx';
+import { IconDownload, IconHistory, IconLogout, IconTrash, IconUpload } from '../components/Icons.tsx';
 import { Modal } from '../components/Modal.tsx';
 import { useToast } from '../components/Toast.tsx';
 import { useData } from '../data.tsx';
@@ -20,6 +21,7 @@ export function Configuracoes({ user, onLogout }: { user: { name: string; email:
   const arquivo = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState<Estado | null>(null);
   const [apagar, setApagar] = useState(false);
+  const [versoes, setVersoes] = useState(false);
   const meses = Object.keys(estado).length;
 
   async function escolher(file: File | undefined) {
@@ -93,6 +95,18 @@ export function Configuracoes({ user, onLogout }: { user: { name: string; email:
         </div>
       </section>
 
+      <section className="cartao ajuste">
+        <h2>Versões anteriores</h2>
+        <div className="ajuste__linha">
+          <span className="campo-ajuda">
+            O FinanceOS guarda sozinho uma cópia dos seus dados a cada sessão de uso e antes de importar, limpar um mês ou apagar tudo. Cada cópia fica 30 dias.
+          </span>
+          <button type="button" className="btn btn--secundario" onClick={() => setVersoes(true)}>
+            <IconHistory size={16} /> Ver versões
+          </button>
+        </div>
+      </section>
+
       <section className="cartao ajuste ajuste--perigo">
         <h2>Zona de perigo</h2>
         <div className="ajuste__linha">
@@ -113,12 +127,14 @@ export function Configuracoes({ user, onLogout }: { user: { name: string; email:
           onClose={() => setImportando(null)}
           onImport={(juntar) => {
             const antes = estado;
-            replace(juntar ? { ...estado, ...importando } : importando);
+            replace(juntar ? { ...estado, ...importando } : importando, { checkpoint: true });
             setImportando(null);
             toast(`${plural(Object.keys(importando).length, "mês importado", "meses importados")}.`, { acao: { label: "Desfazer", onClick: () => replace(antes) } });
           }}
         />
       )}
+
+      {versoes && <VersoesModal onClose={() => setVersoes(false)} />}
 
       {apagar && <ApagarTudo onClose={() => setApagar(false)} onConfirm={async () => {
         try {
@@ -179,6 +195,99 @@ function ImportarModal({ estado, novo, onClose, onImport }: { estado: Estado; no
   );
 }
 
+/** "Hoje às 14:32", "Ontem às 09:10" ou "5 de out. às 18:00". */
+function quando(iso: string): string {
+  const data = new Date(iso);
+  const hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const dia = (d: Date) => d.toDateString();
+  const ontem = new Date();
+  ontem.setDate(ontem.getDate() - 1);
+  if (dia(data) === dia(new Date())) return `Hoje às ${hora}`;
+  if (dia(data) === dia(ontem)) return `Ontem às ${hora}`;
+  return `${data.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })} às ${hora}`;
+}
+
+function VersoesModal({ onClose }: { onClose: () => void }) {
+  const { versoes, restaurar, replace } = useData();
+  const toast = useToast();
+  const [lista, setLista] = useState<Versao[] | null>(null);
+  const [erro, setErro] = useState(false);
+  const [escolhida, setEscolhida] = useState<number | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    versoes()
+      .then((v) => vivo && setLista(v))
+      .catch(() => vivo && setErro(true));
+    return () => {
+      vivo = false;
+    };
+  }, [versoes]);
+
+  async function confirmar(v: Versao) {
+    setOcupado(true);
+    try {
+      const antes = await restaurar(v.id);
+      toast(`Dados de ${quando(v.savedAt).toLowerCase()} restaurados.`, {
+        acao: { label: 'Desfazer', onClick: () => replace(antes, { checkpoint: true }) },
+        duracao: 10000,
+      });
+      onClose();
+    } catch {
+      toast('Não foi possível restaurar agora. Tente de novo.', { tipo: 'erro' });
+      setOcupado(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="Versões anteriores"
+      subtitle="Escolha uma para voltar os dados àquele momento."
+      onClose={onClose}
+      footer={
+        <button type="button" className="btn btn--secundario" onClick={onClose}>
+          Fechar
+        </button>
+      }
+    >
+      {erro ? (
+        <p className="texto-modal">Não conseguimos buscar as versões. Confira sua internet e tente de novo.</p>
+      ) : !lista ? (
+        <p className="texto-modal" aria-busy="true">Buscando versões…</p>
+      ) : !lista.length ? (
+        <p className="texto-modal">Ainda não há versões anteriores. A primeira cópia é feita na próxima vez que você mudar algo.</p>
+      ) : (
+        <ul className="versoes">
+          {lista.map((v) => (
+            <li key={v.id} className="versoes__item">
+              <span className="versoes__texto">
+                <strong>{quando(v.savedAt)}</strong>
+                <span className="campo-ajuda">{plural(v.months, 'mês', 'meses')}</span>
+              </span>
+              {escolhida === v.id ? (
+                <span className="versoes__acoes">
+                  <button type="button" className="btn btn--fantasma btn--pequeno" onClick={() => setEscolhida(null)} disabled={ocupado}>
+                    Cancelar
+                  </button>
+                  <button type="button" className="btn btn--pequeno" onClick={() => void confirmar(v)} disabled={ocupado}>
+                    {ocupado ? 'Restaurando…' : 'Sim, restaurar'}
+                  </button>
+                </span>
+              ) : (
+                <button type="button" className="btn btn--secundario btn--pequeno" onClick={() => setEscolhida(v.id)} disabled={ocupado}>
+                  Restaurar
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {!!lista?.length && <p className="campo-ajuda">Restaurar troca todos os seus dados pelos daquela versão. A versão atual também fica guardada, e dá para desfazer logo depois.</p>}
+    </Modal>
+  );
+}
+
 function ApagarTudo({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => Promise<void> }) {
   const [texto, setTexto] = useState('');
   const [ocupado, setOcupado] = useState(false);
@@ -199,13 +308,13 @@ function ApagarTudo({ onClose, onConfirm }: { onClose: () => void; onConfirm: ()
             Cancelar
           </button>
           <button type="submit" className="btn btn--perigo" disabled={!ok || ocupado}>
-            {ocupado ? 'Apagando…' : 'Apagar para sempre'}
+            {ocupado ? 'Apagando…' : 'Apagar tudo'}
           </button>
         </>
       }
     >
       <div className="texto-modal">
-        <p>Isso apaga todos os meses do servidor e não pode ser desfeito. Se quiser, baixe uma cópia de segurança antes.</p>
+        <p>Isso apaga todos os meses da sua conta. Uma cópia fica em "Versões anteriores" por 30 dias, caso você mude de ideia; depois disso, some de vez.</p>
         <label className="campo-grupo">
           <span className="campo-rotulo">Digite APAGAR para confirmar</span>
           <input className="campo" autoComplete="off" value={texto} onChange={(e) => setTexto(e.target.value)} />

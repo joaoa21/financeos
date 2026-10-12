@@ -44,12 +44,12 @@ export async function fetchDeletedAccounts(config, since) {
   throw new Error(`Lista de contas excluídas com mais de ${MAX_PAGES} páginas: interrompida`);
 }
 
-/** Apaga os dados das contas excluídas. Se o Authik falhar, nada é apagado. */
+/** Apaga os dados (e o histórico) das contas excluídas. Se o Authik falhar, nada é apagado. */
 export async function purgeDeletedAccounts(store, config, now = new Date()) {
   const since = new Date(now.getTime() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const ids = await fetchDeletedAccounts(config, since);
   let purged = 0;
-  for (const id of ids) if (await store.remove(id)) purged++;
+  for (const id of ids) if (await store.purge(id)) purged++;
   return { deletedAccounts: ids.length, purged };
 }
 

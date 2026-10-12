@@ -151,10 +151,13 @@ export function useActions() {
 
     limparMes() {
       let antes: Mes | undefined;
-      update((draft) => {
-        antes = draft[key];
-        delete draft[key];
-      });
+      update(
+        (draft) => {
+          antes = draft[key];
+          delete draft[key];
+        },
+        { checkpoint: true },
+      );
       if (!antes) return;
       const mes = antes;
       toast(`${monthName(key)} foi limpo.`, {

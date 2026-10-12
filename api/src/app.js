@@ -73,11 +73,13 @@ export function createApp({ store, verify, origins, trustProxy = false, log = co
   });
 
   app.put('/api/state', async (req, res) => {
-    const { data, version } = req.body ?? {};
+    const { data, version, checkpoint } = req.body ?? {};
     if (!Number.isInteger(version) || version < 0) return res.status(400).json({ error: 'Campo "version" inválido' });
+    // Ponto de restauração: o site pede antes de mudanças grandes (importar, limpar mês, restaurar).
+    if (checkpoint !== undefined && typeof checkpoint !== 'boolean') return res.status(400).json({ error: 'Campo "checkpoint" inválido' });
     const problem = invalidState(data);
     if (problem) return res.status(400).json({ error: `Dados inválidos: ${problem}` });
-    const result = await store.save(req.userId, data, version);
+    const result = await store.save(req.userId, data, version, checkpoint === true);
     if (!result.ok) {
       // Outra aba ou outro aparelho salvou antes: devolve a versão atual para o site.
       const current = await store.get(req.userId);
@@ -86,7 +88,19 @@ export function createApp({ store, verify, origins, trustProxy = false, log = co
     res.json({ version: result.version, updatedAt: result.updatedAt });
   });
 
-  // "Apagar todos os meus dados" (a conta no Authik continua existindo).
+  // Versões anteriores dos dados (últimos 30 dias), para restaurar depois de um engano.
+  app.get('/api/history', async (req, res) => {
+    res.json({ versions: await store.history(req.userId) });
+  });
+
+  app.get('/api/history/:id', async (req, res) => {
+    const id = /^\d{1,9}$/.test(req.params.id) ? Number(req.params.id) : null;
+    const item = id === null ? null : await store.historyItem(req.userId, id);
+    if (!item) return res.status(404).json({ error: 'Versão não encontrada' });
+    res.json(item);
+  });
+
+  // "Apagar todos os meus dados" (a conta no Authik continua existindo; fica uma cópia no histórico por 30 dias).
   app.delete('/api/state', async (req, res) => {
     await store.remove(req.userId);
     res.status(204).end();
