@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { preparar, previsaoPreparo, resumo, situacao, totaisPorForma, valorInvestimento } from './calc.ts';
 import { sugerirCategoria, sugerirTipo } from './categorias.ts';
-import { businessDaysBetween, shiftKey } from './dates.ts';
+import { businessDaysBetween, dataReferencia, shiftKey } from './dates.ts';
 import { migrate } from './migrate.ts';
 import { merge3 } from './merge.ts';
 
@@ -101,6 +101,21 @@ describe('situação', () => {
     assert.equal(situacao({ ...base, data: 1 }, '2026-11', now), 'pendente');
     assert.equal(situacao({ ...base, data: 10, agendado: true }, '2026-10', now), 'agendado');
     assert.equal(situacao({ ...base, data: 10, pago: true }, '2026-10', now), 'pago');
+  });
+
+  it('dia 31 num mês de 30 dias vale como o último dia', () => {
+    assert.equal(situacao({ ...base, data: 31 }, '2026-11', new Date(2026, 10, 30)), 'hoje');
+    assert.equal(situacao({ ...base, data: 31 }, '2026-02', new Date(2026, 1, 28)), 'hoje');
+  });
+});
+
+describe('data de referência do mês', () => {
+  const now = new Date(2026, 9, 11);
+  it('mês passado usa o último dia dele; atual e futuros, hoje', () => {
+    assert.equal(dataReferencia('2026-09', now), '2026-09-30');
+    assert.equal(dataReferencia('2026-02', now), '2026-02-28');
+    assert.equal(dataReferencia('2026-10', now), '2026-10-11');
+    assert.equal(dataReferencia('2026-12', now), '2026-10-11');
   });
 });
 

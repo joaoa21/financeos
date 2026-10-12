@@ -1,4 +1,4 @@
-import { businessDaysBetween, compareKeys, currentKey, todayISO } from './dates.ts';
+import { businessDaysBetween, compareKeys, currentKey, diaNoMes, todayISO } from './dates.ts';
 import { emptyMonth, uid } from './migrate.ts';
 import type { Despesa, Estado, Forma, Investimento, Mes, Renda } from './types.ts';
 
@@ -70,7 +70,8 @@ export interface Resumo {
   rendimentoCarteira: number;
 }
 
-export function resumo(m: Mes, cdiAnual: number): Resumo {
+/** `ate`: data em que os investimentos são avaliados (veja dataReferencia). */
+export function resumo(m: Mes, cdiAnual: number, ate = todayISO()): Resumo {
   const rendaPrevista = sum(m.rendas, valorRenda);
   const rendaRecebida = sum(m.rendas, (r) => (r.recebido ? r.realizado : 0));
   const despesaPrevista = sum(m.despesas, valorDespesa);
@@ -79,7 +80,7 @@ export function resumo(m: Mes, cdiAnual: number): Resumo {
   const aportes = m.investimentos.flatMap((i) => i.aportes).filter((a) => a.origem === 'conta');
   const aportesConta = sum(aportes, (a) => a.valor);
   const aportesFeitos = sum(aportes, (a) => (a.status === 'feito' ? a.valor : 0));
-  const valores = m.investimentos.map((i) => valorInvestimento(i, cdiAnual));
+  const valores = m.investimentos.map((i) => valorInvestimento(i, cdiAnual, ate));
   return {
     saldoInicial: m.saldoInicial,
     rendaPrevista,
@@ -109,8 +110,9 @@ export function situacao(item: Despesa | Renda, key: string, now = new Date()): 
   const cmp = compareKeys(key, atual);
   if (cmp < 0) return 'atrasado';
   if (cmp > 0 || item.data == null) return 'pendente';
-  if (item.data < now.getDate()) return 'atrasado';
-  if (item.data === now.getDate()) return 'hoje';
+  const dia = diaNoMes(item.data, key);
+  if (dia < now.getDate()) return 'atrasado';
+  if (dia === now.getDate()) return 'hoje';
   return 'pendente';
 }
 

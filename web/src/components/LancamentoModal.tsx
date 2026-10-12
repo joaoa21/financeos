@@ -100,7 +100,7 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
   const erros = {
     nome: !form.nome.trim() ? 'Dê um nome, por exemplo "Aluguel".' : null,
     valor: form.valor <= 0 ? 'Informe o valor.' : null,
-    dia: diaNum !== null && (!Number.isInteger(diaNum) || diaNum < 1 || diaNum > 31) ? `Use um dia de 1 a ${maxDia}.` : null,
+    dia: diaNum !== null && (!Number.isInteger(diaNum) || diaNum < 1 || diaNum > 31) ? 'Use um dia de 1 a 31.' : null,
   };
   const valido = !erros.nome && !erros.valor && !erros.dia;
 
@@ -210,7 +210,11 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
         <Field label="Valor" error={tentou ? erros.valor : null}>
           {(id) => <MoneyInput id={id} value={form.valor} onChange={(valor) => set({ valor, valorFeito: form.feito ? form.valorFeito : valor })} invalid={tentou && !!erros.valor} />}
         </Field>
-        <Field label={despesa ? 'Vence no dia' : 'Cai no dia'} error={erros.dia} hint="Opcional">
+        <Field
+          label={despesa ? 'Vence no dia' : 'Cai no dia'}
+          error={erros.dia}
+          hint={diaNum !== null && diaNum > maxDia && diaNum <= 31 ? `Em ${monthName(props.mesKey).split(' ')[0]?.toLowerCase()}, dia ${maxDia} (último dia)` : 'Opcional'}
+        >
           {(id) => (
             <input
               id={id}

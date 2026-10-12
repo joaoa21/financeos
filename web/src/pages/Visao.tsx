@@ -8,7 +8,7 @@ import { IconeDestaque } from '../components/CategoriaIcone.tsx';
 import { useData } from '../data.tsx';
 import { pct, plural, tom } from '../format.ts';
 import { gastosPorCategoria, mesAnteriorComDados, resumo, situacao, valorDespesa, valorRenda } from '../model/calc.ts';
-import { compareKeys, currentKey, monthName, shiftKey, shortMonthName } from '../model/dates.ts';
+import { compareKeys, currentKey, dataReferencia, daysInMonth, monthName, shiftKey, shortMonthName } from '../model/dates.ts';
 import { Money } from '../prefs.tsx';
 import { useMes, useUi } from '../ui.tsx';
 
@@ -16,7 +16,7 @@ export function Visao() {
   const { estado, legado, importarLegado, descartarLegado } = useData();
   const ui = useUi();
   const { mes, key, existe } = useMes();
-  const r = resumo(mes, ui.cdi.anual);
+  const r = resumo(mes, ui.cdi.anual, dataReferencia(key));
   const hoje = currentKey();
   const ehAtual = key === hoje;
   const passado = compareKeys(key, hoje) < 0;
@@ -43,6 +43,7 @@ export function Visao() {
           renda: m ? m.rendas.reduce((s, x) => s + valorRenda(x), 0) : 0,
           despesa: m ? m.despesas.reduce((s, x) => s + valorDespesa(x), 0) : 0,
           atual: k === key,
+          vazio: !m,
         };
       }),
     [estado, key],
@@ -238,7 +239,8 @@ export function Visao() {
         </section>
       </div>
 
-      {(ehAtual || passado) && !mes.fechado && (
+      {/* Fechar o mês: só nos últimos dias dele (ou se já passou). */}
+      {(passado || (ehAtual && new Date().getDate() >= daysInMonth(key) - 4)) && !mes.fechado && (
         <section className="cartao fechar-mes">
           <div>
             <h2>

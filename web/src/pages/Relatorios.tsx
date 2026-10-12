@@ -97,7 +97,7 @@ export function Relatorios() {
             </header>
             <FluxoChart
               altura={260}
-              pontos={meses.map((m) => ({ key: m.key, label: shortMonthName(m.key), renda: m.renda, despesa: m.despesa, atual: m.key === ui.mes }))}
+              pontos={meses.map((m) => ({ key: m.key, label: shortMonthName(m.key), renda: m.renda, despesa: m.despesa, atual: m.key === ui.mes, vazio: !m.existe }))}
               onSelect={(key) => {
                 ui.setMes(key);
                 ui.go('visao');

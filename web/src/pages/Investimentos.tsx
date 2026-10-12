@@ -4,14 +4,16 @@ import { Menu } from '../components/Menu.tsx';
 import { IconeDestaque } from '../components/CategoriaIcone.tsx';
 import { fullDate, plural, tom } from '../format.ts';
 import { valorInvestimento } from '../model/calc.ts';
+import { dataReferencia, todayISO } from '../model/dates.ts';
 import type { Investimento } from '../model/types.ts';
 import { Money } from '../prefs.tsx';
 import { useActions, useMes, useUi } from '../ui.tsx';
 
 export function Investimentos() {
-  const { mes } = useMes();
+  const { mes, key } = useMes();
   const ui = useUi();
-  const valores = mes.investimentos.map((i) => ({ inv: i, v: valorInvestimento(i, ui.cdi.anual) }));
+  const ref = dataReferencia(key);
+  const valores = mes.investimentos.map((i) => ({ inv: i, v: valorInvestimento(i, ui.cdi.anual, ref) }));
   const carteira = valores.reduce((s, x) => s + x.v.atual, 0);
   const investido = valores.reduce((s, x) => s + x.v.investido, 0);
   const rendimento = carteira - investido;
@@ -54,7 +56,7 @@ export function Investimentos() {
           <section className="destaques destaques--3" aria-label="Resumo da carteira">
             <article className="cartao destaque destaque--principal">
               <span className="destaque__rotulo">
-                <IconTrend size={16} /> Carteira hoje
+                <IconTrend size={16} /> {ref === todayISO() ? 'Carteira hoje' : `Carteira em ${fullDate(ref)}`}
               </span>
               <Money value={carteira} className="destaque__valor destaque__valor--grande" />
               <p className="destaque__sub">{plural(mes.investimentos.length, 'investimento', 'investimentos')} · valores estimados</p>
@@ -77,7 +79,7 @@ export function Investimentos() {
 
           <div className="grade-inv">
             {valores.map(({ inv }) => (
-              <CartaoInvestimento key={inv.id} inv={inv} />
+              <CartaoInvestimento key={inv.id} inv={inv} ate={ref} />
             ))}
           </div>
           <p className="nota-rodape">
@@ -89,10 +91,10 @@ export function Investimentos() {
   );
 }
 
-function CartaoInvestimento({ inv }: { inv: Investimento }) {
+function CartaoInvestimento({ inv, ate }: { inv: Investimento; ate: string }) {
   const ui = useUi();
   const actions = useActions();
-  const v = valorInvestimento(inv, ui.cdi.anual);
+  const v = valorInvestimento(inv, ui.cdi.anual, ate);
   const [aberto, setAberto] = useState(inv.aportes.length <= 4);
   const aportes = [...inv.aportes].sort((a, b) => a.data.localeCompare(b.data));
 

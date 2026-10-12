@@ -826,6 +826,8 @@ path.serie-despesa { fill: var(--serie-despesa); }
 .grafico__base { stroke: var(--borda-forte); }
 .grafico__eixo { fill: var(--texto-3); font-size: 11px; font-family: var(--sans); }
 .grafico__eixo--atual { fill: var(--texto); font-weight: 600; }
+.grafico__eixo--vazio { opacity: .55; }
+.grafico__vazio { stroke: var(--texto-3); stroke-width: 2; stroke-dasharray: 3 3; stroke-linecap: round; }
 .grafico__alvo { fill: transparent; cursor: pointer; }
 .grafico__grupo--ativo .grafico__alvo { fill: var(--cartao-2); }
 .grafico__grupo path { transition: opacity .15s; }
