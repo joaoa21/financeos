@@ -855,6 +855,20 @@ path.serie-despesa { fill: var(--serie-despesa); }
 .categorias__pct { font-size: .75rem; font-weight: 500; color: var(--texto-3); min-width: 32px; text-align: right; }
 .categorias__trilho { grid-column: 2 / 4; height: 6px; border-radius: 6px; background: var(--cartao-2); overflow: hidden; }
 .categorias__trilho span { display: block; height: 100%; border-radius: 6px; background: var(--marca); opacity: .85; }
+.limites li { grid-template-rows: auto auto auto; }
+.limites .categorias__icone { grid-row: span 3; align-self: start; }
+.limites .categorias__pct { min-width: 0; display: inline-flex; gap: 4px; }
+.limites .categorias__pct .valor { color: inherit; font-weight: 500; }
+.limites__nota { grid-column: 2 / 4; font-size: .78rem; color: var(--texto-3); }
+.limites--ok .categorias__trilho span { background: var(--positivo); }
+.limites--perto .categorias__trilho span { background: var(--alerta); opacity: 1; }
+.limites--perto .limites__nota { color: var(--alerta); }
+.limites--estourou .categorias__trilho span { background: var(--negativo); opacity: 1; }
+.limites--estourou .limites__nota { color: var(--negativo); font-weight: 600; }
+.limites-form { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.limites-form li { display: grid; grid-template-columns: 30px minmax(0, 1fr) 150px; gap: 10px; align-items: center; }
+.limites-form__texto { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.limites-form__nome { font-size: .875rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- Investimentos ---------- */
 

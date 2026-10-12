@@ -22,6 +22,7 @@ export interface Ui {
   editarLancamento: (kind: Kind, id: string) => void;
   prepararMes: (destino: string, fechar?: boolean) => void;
   editarSaldo: () => void;
+  editarLimites: () => void;
   novoInvestimento: () => void;
   editarInvestimento: (id: string) => void;
   novoAporte: (invId: string) => void;

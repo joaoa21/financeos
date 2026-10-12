@@ -170,7 +170,7 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
     toast(
       editando
         ? form.aplicarSeguintes && mesesAlvo.length
-          ? `Alterações salvas também em ${plural(mesesAlvo.length, 'mês seguinte', 'meses seguintes')}.`
+          ? `Alterações salvas também ${mesesAlvo.length === 1 ? 'no mês seguinte' : `nos ${mesesAlvo.length} meses seguintes`}.`
           : 'Alterações salvas.'
         : parcelado && ultimoMes
           ? `${plural(totalParcelas - parcelaAtual + 1, 'parcela adicionada', 'parcelas adicionadas')}, até ${monthName(ultimoMes)}.`
@@ -384,7 +384,15 @@ export function LancamentoModal(props: { mesKey: string; kind: Kind; id?: string
           <Switch
             checked={form.aplicarSeguintes}
             onChange={(aplicarSeguintes) => set({ aplicarSeguintes })}
-            label={parcelaExistente ? `Aplicar também nas próximas ${plural(alvos.length, 'parcela', 'parcelas')}` : `Aplicar também ${plural(mesesAlvo.length, 'no mês seguinte', 'nos meses seguintes')}`}
+            label={
+              parcelaExistente
+                ? alvos.length === 1
+                  ? 'Aplicar também na próxima parcela'
+                  : `Aplicar também nas próximas ${alvos.length} parcelas`
+                : mesesAlvo.length === 1
+                  ? 'Aplicar também no mês seguinte'
+                  : `Aplicar também nos ${mesesAlvo.length} meses seguintes`
+            }
             hint={`${mesesAlvo.slice(0, 6).map(shortMonthName).join(', ')}${mesesAlvo.length > 6 ? '…' : ''}. Muda nome, valor, dia e categoria; o que já está ${despesa ? 'pago' : 'recebido'} fica como está.`}
           />
         )}

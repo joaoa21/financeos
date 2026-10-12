@@ -138,6 +138,12 @@ function mes(raw: Loose): Mes {
     investimentos: list(raw.investimentos).map(investimento),
   };
   if (raw.fechado === true) m.fechado = true;
+  if (raw.orcamentos !== undefined) {
+    m.orcamentos = {};
+    for (const [cat, valor] of Object.entries(obj(raw.orcamentos)).slice(0, 50)) {
+      if (/^[a-z]{1,40}$/.test(cat) && num(valor) > 0) m.orcamentos[cat] = num(valor);
+    }
+  }
   return m;
 }
 
@@ -152,5 +158,5 @@ export function migrate(raw: unknown): Estado {
 
 /** Um mês sem nada (e sem saldo) não precisa ser guardado. */
 export function isEmptyMonth(m: Mes | undefined): boolean {
-  return !m || (!m.saldoInicial && !m.despesas.length && !m.rendas.length && !m.investimentos.length && !m.fechado);
+  return !m || (!m.saldoInicial && !m.despesas.length && !m.rendas.length && !m.investimentos.length && !m.fechado && m.orcamentos === undefined);
 }

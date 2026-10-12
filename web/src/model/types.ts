@@ -72,6 +72,11 @@ export interface Mes {
   investimentos: Investimento[];
   /** O mês foi fechado (o seguinte já foi preparado). */
   fechado?: boolean;
+  /**
+   * Limite de gasto por categoria (id da categoria → R$). Vale deste mês em diante:
+   * um mês sem limites próprios usa os do mês anterior mais recente que tenha.
+   */
+  orcamentos?: Record<string, number>;
 }
 
 export type Estado = Record<string, Mes>;

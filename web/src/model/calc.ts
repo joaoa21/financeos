@@ -123,6 +123,38 @@ export function gastosPorCategoria(m: Mes): { id: string; total: number }[] {
   return [...totals].map(([id, total]) => ({ id, total })).filter((c) => c.total > 0).sort((a, b) => b.total - a.total);
 }
 
+// ─── Limites por categoria ───────────────────────────────────────
+
+/** Limites que valem no mês: os dele ou, se não tiver, os do mês anterior mais recente que tenha. */
+export function limitesDoMes(estado: Estado, key: string): { limites: Record<string, number>; de: string | null } {
+  if (estado[key]?.orcamentos) return { limites: estado[key]!.orcamentos!, de: key };
+  const anteriores = Object.keys(estado)
+    .filter((k) => compareKeys(k, key) < 0 && estado[k]!.orcamentos)
+    .sort();
+  const de = anteriores[anteriores.length - 1];
+  return de ? { limites: estado[de]!.orcamentos!, de } : { limites: {}, de: null };
+}
+
+export interface UsoLimite {
+  id: string;
+  limite: number;
+  gasto: number;
+  /** gasto / limite (1 = no limite). */
+  uso: number;
+}
+
+/** Gasto previsto de cada categoria com limite, das mais apertadas para as mais folgadas. */
+export function usoDosLimites(m: Mes, limites: Record<string, number>): UsoLimite[] {
+  const gastos = new Map(gastosPorCategoria(m).map((c) => [c.id, c.total]));
+  return Object.entries(limites)
+    .filter(([, limite]) => limite > 0)
+    .map(([id, limite]) => {
+      const gasto = gastos.get(id) ?? 0;
+      return { id, limite, gasto, uso: gasto / limite };
+    })
+    .sort((a, b) => b.uso - a.uso);
+}
+
 // ─── Preparar o mês seguinte ─────────────────────────────────────
 
 export interface OpcoesPreparo {

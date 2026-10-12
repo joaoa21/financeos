@@ -27,6 +27,7 @@ import {
 } from './Icons.tsx';
 import { AporteModal, InvestimentoModal } from './InvestimentoModals.tsx';
 import { LancamentoModal } from './LancamentoModal.tsx';
+import { LimitesModal } from './LimitesModal.tsx';
 import { Logo, LogoMark } from './Logo.tsx';
 import { Menu } from './Menu.tsx';
 import { PrepararModal, SaldoModal } from './PrepararModal.tsx';
@@ -35,6 +36,7 @@ type Janela =
   | { tipo: 'lancamento'; kind: Kind; id?: string }
   | { tipo: 'preparar'; destino: string; fechar: boolean }
   | { tipo: 'saldo' }
+  | { tipo: 'limites' }
   | { tipo: 'investimento'; id?: string }
   | { tipo: 'aporte'; invId: string };
 
@@ -65,6 +67,7 @@ export function Shell(props: {
       editarLancamento: (kind, id) => setJanela({ tipo: 'lancamento', kind, id }),
       prepararMes: (destino, fecharMes = false) => setJanela({ tipo: 'preparar', destino, fechar: fecharMes }),
       editarSaldo: () => setJanela({ tipo: 'saldo' }),
+      editarLimites: () => setJanela({ tipo: 'limites' }),
       novoInvestimento: () => setJanela({ tipo: 'investimento' }),
       editarInvestimento: (id) => setJanela({ tipo: 'investimento', id }),
       novoAporte: (invId) => setJanela({ tipo: 'aporte', invId }),
@@ -166,6 +169,7 @@ export function Shell(props: {
       {janela?.tipo === 'lancamento' && <LancamentoModal key={janela.id ?? 'novo'} mesKey={mes} kind={janela.kind} id={janela.id} onClose={fechar} />}
       {janela?.tipo === 'preparar' && <PrepararModal destino={janela.destino} fechar={janela.fechar} onClose={fechar} />}
       {janela?.tipo === 'saldo' && <SaldoModal mesKey={mes} onClose={fechar} />}
+      {janela?.tipo === 'limites' && <LimitesModal mesKey={mes} onClose={fechar} />}
       {janela?.tipo === 'investimento' && <InvestimentoModal mesKey={mes} id={janela.id} onClose={fechar} />}
       {janela?.tipo === 'aporte' && <AporteModal mesKey={mes} invId={janela.invId} onClose={fechar} />}
     </UiContext.Provider>

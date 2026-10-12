@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { aplicar, parcelar, preparar, previsaoPreparo, resumo, seguintes, situacao, totaisPorForma, valorInvestimento } from './calc.ts';
+import { aplicar, limitesDoMes, parcelar, preparar, previsaoPreparo, resumo, seguintes, situacao, totaisPorForma, usoDosLimites, valorInvestimento } from './calc.ts';
 import { sugerirCategoria, sugerirTipo } from './categorias.ts';
 import { businessDaysBetween, dataReferencia, shiftKey } from './dates.ts';
 import { migrate } from './migrate.ts';
@@ -150,6 +150,44 @@ describe('compras parceladas', () => {
     aplicar(estado, alvos, 'despesa', { planejado: 130 });
     assert.equal(estado['2026-11']!.despesas[0]!.planejado, 130);
     assert.equal(estado['2026-12']!.despesas[0]!.planejado, 100);
+  });
+});
+
+describe('limites por categoria', () => {
+  const estado = migrate({
+    '2026-08': { orcamentos: { mercado: 800 } },
+    '2026-09': { despesas: [{ nome: 'Mercado', planejado: 300 }] },
+    '2026-10': {
+      orcamentos: { mercado: 1000, alimentacao: 200, xx9: 5, lazer: -1 },
+      despesas: [
+        { nome: 'Supermercado', planejado: 900 },
+        { nome: 'iFood', planejado: 250 },
+      ],
+    },
+  });
+
+  it('valem do mês em diante; mês sem limites usa os do anterior mais recente', () => {
+    assert.deepEqual(limitesDoMes(estado, '2026-10'), { limites: { mercado: 1000, alimentacao: 200 }, de: '2026-10' }, 'descarta categoria inválida e valor ≤ 0');
+    assert.equal(limitesDoMes(estado, '2026-09').de, '2026-08');
+    assert.equal(limitesDoMes(estado, '2027-01').de, '2026-10');
+    assert.equal(limitesDoMes(estado, '2026-07').de, null);
+  });
+
+  it('mostra primeiro o que estourou', () => {
+    const uso = usoDosLimites(estado['2026-10']!, limitesDoMes(estado, '2026-10').limites);
+    assert.deepEqual(uso.map((u) => [u.id, u.gasto]), [['alimentacao', 250], ['mercado', 900]]);
+  });
+
+  it('um mês só com limites não some e a mescla entre aparelhos mantém os limites', () => {
+    assert.ok(migrate(estado)['2026-08']);
+    const base = migrate(estado);
+    const local = structuredClone(base);
+    local['2026-10']!.orcamentos = { mercado: 1200 };
+    const remoto = structuredClone(base);
+    remoto['2026-10']!.saldoInicial = 50;
+    const { estado: junto } = merge3(base, local, remoto);
+    assert.deepEqual(junto['2026-10']!.orcamentos, { mercado: 1200 });
+    assert.equal(junto['2026-10']!.saldoInicial, 50);
   });
 });
 
